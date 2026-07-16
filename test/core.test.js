@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   compareVersions,
+  createExtensionUpdateBatches,
   createExtensionUpdateUrl,
   getExtensionDownloadUrl,
   hasExtensionUpdate,
@@ -95,6 +96,30 @@ test('createExtensionUpdateUrl preserves query parameters and appends ids', () =
   assert.equal(url.searchParams.get('acceptformat'), 'crx2,crx3')
   assert.equal(url.searchParams.get('prodversion'), '120.0.0.0')
   assert.deepEqual(url.searchParams.getAll('x'), ['id=one&uc', 'id=two&uc'])
+})
+
+test('createExtensionUpdateBatches respects the URL length limit', () => {
+  const ids = Array.from({ length: 20 }, (_, index) =>
+    `extension-${index.toString().padStart(2, '0')}`
+  )
+  const batches = createExtensionUpdateBatches(
+    'https://example.test/update?channel=stable',
+    ids,
+    '120.0.0.0',
+    220
+  )
+
+  assert.ok(batches.length > 1)
+  assert.deepEqual(batches.flat(), ids)
+  batches.forEach(batch => {
+    assert.ok(
+      createExtensionUpdateUrl(
+        'https://example.test/update?channel=stable',
+        batch,
+        '120.0.0.0'
+      ).href.length <= 220
+    )
+  })
 })
 
 test('getExtensionDownloadUrl builds a Google redirect URL', () => {

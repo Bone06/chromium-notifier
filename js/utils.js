@@ -1,4 +1,5 @@
 import {
+  createExtensionUpdateBatches,
   createExtensionUpdateUrl,
   mapPlatformToArch,
   parseUpdateManifest
@@ -37,7 +38,11 @@ export const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
   })
 }
 
-export const fetchExtensionsInfo = async (extensions, prodversion) => {
+export const fetchExtensionsInfo = async (
+  extensions,
+  prodversion,
+  { maxUrlLength = 1800 } = {}
+) => {
   const jobs = extensions.reduce((acc, { id, updateUrl }) => {
     if (updateUrl) {
       acc[updateUrl] = addIfNew(acc[updateUrl], id)
@@ -46,11 +51,26 @@ export const fetchExtensionsInfo = async (extensions, prodversion) => {
   }, {})
 
   const updateUrls = Object.keys(jobs)
+  const serverJobs = updateUrls.map(updateUrl => ({
+    batches: createExtensionUpdateBatches(
+      updateUrl,
+      jobs[updateUrl],
+      prodversion,
+      maxUrlLength
+    ),
+    updateUrl
+  }))
+  const batchJobs = serverJobs.flatMap(({ batches, updateUrl }) =>
+    batches.map((ids, batchIndex) => ({
+      batchIndex,
+      ids,
+      totalBatches: batches.length,
+      updateUrl
+    }))
+  )
   const results = await Promise.allSettled(
-    updateUrls.map(
-      updateUrl =>
-      updateUrl &&
-      fetchExtensionInfo(updateUrl, jobs[updateUrl], prodversion)
+    batchJobs.map(({ ids, updateUrl }) =>
+      fetchExtensionInfo(updateUrl, ids, prodversion)
     )
   )
 
@@ -62,19 +82,26 @@ export const fetchExtensionsInfo = async (extensions, prodversion) => {
   const extensionsErrors = results.flatMap((result, index) =>
     result.status === 'rejected'
       ? [{
-          updateUrl: updateUrls[index],
+          batch: batchJobs[index].batchIndex + 1,
+          totalBatches: batchJobs[index].totalBatches,
+          updateUrl: batchJobs[index].updateUrl,
           message: result.reason?.message || String(result.reason)
         }]
       : []
+  )
+  const failedServers = new Set(
+    extensionsErrors.map(({ updateUrl }) => updateUrl)
   )
 
   return {
     extensionsErrors,
     extensionsInfo,
     extensionsUpdateSummary: {
-      failed: extensionsErrors.length,
-      succeeded: results.length - extensionsErrors.length,
-      total: results.length
+      batches: batchJobs.length,
+      failed: failedServers.size,
+      failedBatches: extensionsErrors.length,
+      succeeded: serverJobs.length - failedServers.size,
+      total: serverJobs.length
     }
   }
 }

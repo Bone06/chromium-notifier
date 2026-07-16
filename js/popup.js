@@ -199,15 +199,22 @@ const ExtensionsInfo = ({
         html`
           <div style="display: block; margin-top: 0.75rem; white-space: normal;">
             <small style="color: #b00020;">
-              Update information unavailable from
+              Update information partially or fully unavailable from
               ${extensionsUpdateSummary.failed || extensionsErrors.length} of
               ${extensionsUpdateSummary.total || extensionsErrors.length}
               servers.
             </small>
             <ul>
-              ${extensionsErrors.map(({ message, updateUrl }) => html`
+              ${extensionsErrors.map(({
+                batch,
+                message,
+                totalBatches,
+                updateUrl
+              }) => html`
                 <li>
-                  <code>${new URL(updateUrl).host}</code>: ${message}
+                  <code>${new URL(updateUrl).host}</code>${totalBatches > 1
+                    ? ` (batch ${batch}/${totalBatches})`
+                    : ''}: ${message}
                 </li>
               `)}
             </ul>

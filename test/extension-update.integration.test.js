@@ -37,6 +37,15 @@ const startServer = async () => {
       .getAll('x')
       .map(value => new URLSearchParams(value).get('id'))
 
+    if (
+      url.pathname === '/batch-errors' &&
+      ids.some(id => id.includes('-fail-'))
+    ) {
+      response.writeHead(500, { 'content-type': 'text/plain' })
+      response.end('Batch error')
+      return
+    }
+
     const apps = ids.map(id =>
       id === 'current-extension'
         ? `<app appid="${id}"><updatecheck status="noupdate" /></app>`
@@ -134,13 +143,78 @@ test('fetchExtensionsInfo keeps successful servers when another server fails', a
   ])
   assert.deepEqual(result.extensionsErrors, [
     {
+      batch: 1,
+      totalBatches: 1,
       updateUrl: `${fixture.baseUrl}/error`,
       message: 'Extension update request failed (500)'
     }
   ])
   assert.deepEqual(result.extensionsUpdateSummary, {
+    batches: 2,
     failed: 1,
+    failedBatches: 1,
     succeeded: 1,
     total: 2
+  })
+})
+
+test('fetchExtensionsInfo splits long update requests into batches', async t => {
+  const fixture = await startServer()
+  t.after(fixture.close)
+  const ids = Array.from({ length: 80 }, (_, index) =>
+    `extension-${index.toString().padStart(2, '0')}-${'x'.repeat(20)}`
+  )
+
+  const result = await fetchExtensionsInfo(
+    ids.map(id => ({ id, updateUrl: `${fixture.baseUrl}/updates` })),
+    '120.0.0.0',
+    { maxUrlLength: 500 }
+  )
+
+  const updateRequests = fixture.requests.filter(
+    ({ pathname }) => pathname === '/updates'
+  )
+  assert.ok(updateRequests.length > 1)
+  assert.equal(result.extensionsInfo.length, ids.length)
+  assert.deepEqual(result.extensionsInfo.map(({ id }) => id), ids)
+  assert.deepEqual(result.extensionsErrors, [])
+  assert.deepEqual(result.extensionsUpdateSummary, {
+    batches: updateRequests.length,
+    failed: 0,
+    failedBatches: 0,
+    succeeded: 1,
+    total: 1
+  })
+  updateRequests.forEach(url => assert.ok(url.href.length <= 500))
+})
+
+test('fetchExtensionsInfo preserves successful batches from a partially failing server', async t => {
+  const fixture = await startServer()
+  t.after(fixture.close)
+  const ids = [
+    `extension-first-${'x'.repeat(30)}`,
+    `extension-second-${'x'.repeat(30)}`,
+    `extension-fail-${'x'.repeat(30)}`,
+    `extension-fourth-${'x'.repeat(30)}`,
+    `extension-fifth-${'x'.repeat(30)}`
+  ]
+
+  const result = await fetchExtensionsInfo(
+    ids.map(id => ({ id, updateUrl: `${fixture.baseUrl}/batch-errors` })),
+    '120.0.0.0',
+    { maxUrlLength: 190 }
+  )
+
+  assert.ok(result.extensionsInfo.length > 0)
+  assert.ok(result.extensionsInfo.length < ids.length)
+  assert.equal(result.extensionsErrors.length, 1)
+  assert.equal(result.extensionsErrors[0].updateUrl, `${fixture.baseUrl}/batch-errors`)
+  assert.ok(result.extensionsErrors[0].totalBatches > 1)
+  assert.deepEqual(result.extensionsUpdateSummary, {
+    batches: result.extensionsErrors[0].totalBatches,
+    failed: 1,
+    failedBatches: 1,
+    succeeded: 0,
+    total: 1
   })
 })

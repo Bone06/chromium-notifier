@@ -47,6 +47,38 @@ export const createExtensionUpdateUrl = (updateUrl, ids, prodversion) => {
   return url
 }
 
+export const createExtensionUpdateBatches = (
+  updateUrl,
+  ids,
+  prodversion,
+  maxUrlLength = 1800
+) => {
+  const batches = []
+  let current = []
+
+  ids.forEach(id => {
+    const candidate = [...current, id]
+    const candidateLength = createExtensionUpdateUrl(
+      updateUrl,
+      candidate,
+      prodversion
+    ).href.length
+
+    if (current.length && candidateLength > maxUrlLength) {
+      batches.push(current)
+      current = [id]
+    } else {
+      current = candidate
+    }
+  })
+
+  if (current.length) {
+    batches.push(current)
+  }
+
+  return batches
+}
+
 export const getExtensionDownloadUrl = (info, currentVersion) => {
   if (!info.codebase.includes('clients2.googleusercontent.com')) {
     return info.codebase
