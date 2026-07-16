@@ -65,6 +65,21 @@ summary {
   white-space: normal;
 }
 
+.management-error {
+  color: #b00020;
+  margin: 0.75rem 0 0;
+  white-space: normal;
+}
+
+.install-type {
+  background: #e8eaed;
+  border-radius: 4px;
+  color: #3c4043;
+  font-size: 0.75rem;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.3rem;
+}
+
 .badge-colors {
   display: grid;
   gap: 0.5rem 1rem;
@@ -110,6 +125,11 @@ ul.extensions li button.remove {
 
 ul.extensions li:hover button.remove {
   visibility: visible;
+}
+
+ul.extensions li button.remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 button.check-now {

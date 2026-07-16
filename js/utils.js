@@ -1,6 +1,7 @@
 import {
   createExtensionUpdateBatches,
   createExtensionUpdateUrl,
+  filterRelevantExtensions,
   mapPlatformToArch,
   parseUpdateManifest
 } from './core.js'
@@ -10,6 +11,13 @@ const addIfNew = (arr = [], item) =>
 
 export const getSelf = () =>
   new Promise(resolve => chrome.management.get(chrome.runtime.id, resolve))
+
+export const getInstalledExtensions = () =>
+  new Promise(resolve =>
+    chrome.management.getAll(extensions =>
+      resolve(filterRelevantExtensions(extensions, chrome.runtime.id))
+    )
+  )
 
 export const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
   const url = createExtensionUpdateUrl(updateUrl, ids, prodversion)
@@ -137,38 +145,29 @@ export const getUserAgentData = async () => {
   return { ...platformInfo, uaFullVersion }
 }
 
-export const getConfig = () =>
-  new Promise(resolve =>
-    getUserAgentData().then(({ arch, os, uaFullVersion }) => {
-      chrome.management.getAll(extensions =>
-        chrome.storage.local.get(store => {
-          if (!store.arch) {
-            store.arch = mapPlatformToArch({ arch, os })
-          }
-          getSelf().then(self =>
-            resolve({
-              ...store,
-              currentVersion: uaFullVersion,
-              extensions,
-              self
-            })
-          )
-        })
-      )
-    })
-  )
+export const getConfig = async () => {
+  const [{ arch, os, uaFullVersion }, extensions, self, store] =
+    await Promise.all([
+      getUserAgentData(),
+      getInstalledExtensions(),
+      getSelf(),
+      new Promise(resolve => chrome.storage.local.get(resolve))
+    ])
+
+  return {
+    ...store,
+    arch: store.arch || mapPlatformToArch({ arch, os }),
+    currentVersion: uaFullVersion,
+    extensions,
+    self
+  }
+}
 
 export const getExtensionsInfo = async currentVersion => {
-  const extensions = await new Promise(resolve =>
-    chrome.management.getAll(exts =>
-      resolve(
-        exts.map(ext => ({
-          id: ext.id,
-          updateUrl: ext.updateUrl
-        }))
-      )
-    )
-  )
+  const extensions = (await getInstalledExtensions()).map(ext => ({
+    id: ext.id,
+    updateUrl: ext.updateUrl
+  }))
 
   return await fetchExtensionsInfo(extensions, currentVersion)
 }

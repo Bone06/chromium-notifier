@@ -104,6 +104,22 @@ export const mapPlatformToArch = ({ arch, os }) =>
 export const matchExtension = extension => ({ id, version }) =>
   Boolean(version && id === extension.id)
 
+export const filterRelevantExtensions = (extensions = [], selfId) =>
+  extensions.filter(({ id, type }) => type === 'extension' && id !== selfId)
+
+export const getExtensionCapabilities = extension => ({
+  canRemove: extension.mayDisable !== false,
+  canToggle: extension.enabled
+    ? extension.mayDisable !== false
+    : extension.mayEnable !== false
+})
+
+export const getInstallTypeLabel = installType => ({
+  admin: 'Managed',
+  development: 'Unpacked',
+  sideload: 'Sideloaded'
+})[installType] || null
+
 export const compareVersions = (left = '', right = '') => {
   const a = left.split('.').map(part => Number(part) || 0)
   const b = right.split('.').map(part => Number(part) || 0)

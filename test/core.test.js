@@ -5,12 +5,15 @@ import {
   compareVersions,
   createExtensionUpdateBatches,
   createExtensionUpdateUrl,
+  filterRelevantExtensions,
   getDefaultBadgeColors,
   getBadgePresentation,
   getBadgeStatus,
   getBuildSelectionStatus,
   getChromiumVersionStatus,
   getExtensionDownloadUrl,
+  getExtensionCapabilities,
+  getInstallTypeLabel,
   getWoolyssErrorState,
   getWoolyssSuccessState,
   hasExtensionUpdate,
@@ -233,6 +236,42 @@ test('matchExtension only matches an extension with the same id and a version', 
   assert.equal(matchExtension(extension)({ id: 'one', version: '2.0.0' }), true)
   assert.equal(matchExtension(extension)({ id: 'two', version: '2.0.0' }), false)
   assert.equal(matchExtension(extension)({ id: 'one' }), false)
+})
+
+test('filterRelevantExtensions keeps only other extensions', () => {
+  const extensions = [
+    { id: 'self', type: 'extension' },
+    { id: 'other', type: 'extension' },
+    { id: 'theme', type: 'theme' },
+    { id: 'app', type: 'hosted_app' }
+  ]
+
+  assert.deepEqual(filterRelevantExtensions(extensions, 'self'), [
+    { id: 'other', type: 'extension' }
+  ])
+})
+
+test('getExtensionCapabilities respects management restrictions', () => {
+  assert.deepEqual(
+    getExtensionCapabilities({ enabled: true, mayDisable: false }),
+    { canRemove: false, canToggle: false }
+  )
+  assert.deepEqual(
+    getExtensionCapabilities({ enabled: false, mayDisable: true }),
+    { canRemove: true, canToggle: true }
+  )
+  assert.deepEqual(
+    getExtensionCapabilities({ enabled: false, mayEnable: false }),
+    { canRemove: true, canToggle: false }
+  )
+})
+
+test('getInstallTypeLabel identifies non-standard installations', () => {
+  assert.equal(getInstallTypeLabel('admin'), 'Managed')
+  assert.equal(getInstallTypeLabel('development'), 'Unpacked')
+  assert.equal(getInstallTypeLabel('sideload'), 'Sideloaded')
+  assert.equal(getInstallTypeLabel('normal'), null)
+  assert.equal(getInstallTypeLabel('other'), null)
 })
 
 test('hasExtensionUpdate only accepts a newer version for the same extension', () => {

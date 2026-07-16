@@ -3,6 +3,7 @@ import htm from './vendor/htm-3.1.1.js'
 import {
   getConfig,
   getExtensionsInfo,
+  getInstalledExtensions,
   getUserAgentData
 } from './utils.js'
 import {
@@ -11,6 +12,8 @@ import {
   getChromiumVersionStatus,
   getDefaultBadgeColors,
   getExtensionDownloadUrl,
+  getExtensionCapabilities,
+  getInstallTypeLabel,
   hasExtensionUpdate,
   matchExtension
 } from './core.js'
@@ -56,8 +59,6 @@ const changePlatform = e =>
   })
 
 const changeTag = e => chrome.storage.local.set({ tag: e.target.value })
-
-const removeExt = e => chrome.management.uninstall(e.currentTarget.id)
 
 /*
  * Components
@@ -151,13 +152,84 @@ const changeBadgeColor = ({ target: { name, value } }) =>
     })
   )
 
+const ExtensionRow = ({
+  currentVersion,
+  extension,
+  info,
+  onRemoveExtension,
+  onToggleExtension,
+  pending
+}) => {
+  const { canRemove, canToggle } = getExtensionCapabilities(extension)
+  const installTypeLabel = getInstallTypeLabel(extension.installType)
+  const toggleTitle = !canToggle
+    ? extension.enabled
+      ? 'This extension cannot be disabled'
+      : 'This extension cannot be enabled'
+    : extension.enabled
+    ? 'Disable'
+    : 'Enable'
+
+  return html`
+    <li>
+      <div class="${extension.enabled ? '' : ' disabled'}">
+        <input
+          checked="${extension.enabled}"
+          disabled="${pending || !canToggle}"
+          id="${extension.id}"
+          onChange="${onToggleExtension}"
+          style="margin-right: 0.75em"
+          title="${toggleTitle}"
+          type="checkbox"
+        />
+        ${extension.homepageUrl
+          ? html`
+              <a href="${extension.homepageUrl}" target="_blank">
+                <span>${extension.name} </span>
+              </a>
+            `
+          : `${extension.name} `}
+        <code>
+          <span>v${extension.version} </span>
+          ${hasExtensionUpdate(extension, info) &&
+            info.codebase &&
+            html`
+              <a
+                class="badge"
+                href="${getExtensionDownloadUrl(info, currentVersion)}"
+                target="_blank"
+              >v${info.version}</a>
+            `}
+        </code>
+        ${installTypeLabel &&
+          html`<span class="install-type">${installTypeLabel}</span>`}
+      </div>
+      <div>
+        <button
+          class="remove"
+          disabled="${pending || !canRemove}"
+          id="${extension.id}"
+          onClick="${onRemoveExtension}"
+          title="${canRemove
+            ? 'Remove extension'
+            : 'This extension cannot be removed'}"
+          type="button"
+        >🗑</button>
+      </div>
+    </li>
+  `
+}
+
 const ExtensionsInfo = ({
   currentVersion,
   extensions = [],
   extensionsErrors = [],
   extensionsInfo = [],
   extensionsUpdateSummary = {},
-  onDisableExtension
+  managementError,
+  onRemoveExtension,
+  onToggleExtension,
+  pendingExtensionIds = []
 }) => {
   const supported = extensions
     .filter(ext => extensionsInfo.find(matchExtension(ext)))
@@ -177,46 +249,24 @@ const ExtensionsInfo = ({
       )}"
     >
       <summary>${extensions.length} Extensions</summary>
+      ${managementError &&
+        html`
+          <p aria-live="polite" class="management-error">
+            ${managementError}
+          </p>
+        `}
       <ul class="extensions">
         ${supported.map(ext => {
           const info = extensionsInfo.find(matchExtension(ext))
           return html`
-            <li>
-              <div class="${ext.enabled ? '' : ' disabled'}">
-                <input
-                  checked="${ext.enabled}"
-                  id="${ext.id}"
-                  onChange="${onDisableExtension}"
-                  style="margin-right: 0.75em"
-                  title="${ext.enabled ? 'Disable' : 'Enable'}"
-                  type="checkbox"
-                />
-                ${ext.homepageUrl
-                  ? html`
-                      <a href="${ext.homepageUrl}" target="_blank"
-                        ><span>${ext.name} </span>
-                      </a>
-                    `
-                  : `${ext.name} `}
-                <code
-                  ><span>v${ext.version} </span> ${hasExtensionUpdate(ext, info) &&
-                    info.codebase &&
-                    html`
-                      <a
-                        class="badge"
-                        href="${getExtensionDownloadUrl(info, currentVersion)}"
-                        target="_blank"
-                        >v${info.version}</a
-                      >
-                    `}</code
-                >
-              </div>
-              <div>
-                <button class="remove" id="${ext.id}" onClick="${removeExt}">
-                  🗑
-                </button>
-              </div>
-            </li>
+            <${ExtensionRow}
+              currentVersion="${currentVersion}"
+              extension="${ext}"
+              info="${info}"
+              onRemoveExtension="${onRemoveExtension}"
+              onToggleExtension="${onToggleExtension}"
+              pending="${pendingExtensionIds.includes(ext.id)}"
+            />
           `
         })}
       </ul>
@@ -227,35 +277,14 @@ const ExtensionsInfo = ({
             ${unsupported.map(ext => {
               const info = extensionsInfo.find(({ id }) => id === ext.id)
               return html`
-                <li>
-                  <div class="${ext.enabled ? '' : ' disabled'}">
-                    <input
-                      checked="${ext.enabled}"
-                      id="${ext.id}"
-                      onChange="${onDisableExtension}"
-                      style="margin-right: 0.75em"
-                      title="${ext.enabled ? 'Disable' : 'Enable'}"
-                      type="checkbox"
-                    />
-                    ${ext.homepageUrl
-                      ? html`
-                          <a href="${ext.homepageUrl}" target="_blank"
-                            ><span>${ext.name} </span>
-                          </a>
-                        `
-                      : `${ext.name} `}
-                    <code>v${ext.version}</code>
-                  </div>
-                  <div>
-                    <button
-                      class="remove"
-                      id="${ext.id}"
-                      onClick="${removeExt}"
-                    >
-                      🗑
-                    </button>
-                  </div>
-                </li>
+                <${ExtensionRow}
+                  currentVersion="${currentVersion}"
+                  extension="${ext}"
+                  info="${info}"
+                  onRemoveExtension="${onRemoveExtension}"
+                  onToggleExtension="${onToggleExtension}"
+                  pending="${pendingExtensionIds.includes(ext.id)}"
+                />
               `
             })}
           </ul>
@@ -463,6 +492,8 @@ class App extends Component {
     extensionsErrors: [],
     extensionsInfo: [],
     extensionsUpdateSummary: {},
+    managementError: null,
+    pendingExtensionIds: [],
     self: {},
     versions: {}
   }
@@ -477,13 +508,55 @@ class App extends Component {
     })
   }
 
-  onDisableExtension = ({ target: { checked, id } }) => {
-    chrome.management.setEnabled(id, checked)
+  refreshExtensions = async () => {
+    this.setState({ extensions: await getInstalledExtensions() })
+  }
 
-    const newState = [...this.state.extensions]
-    const i = newState.findIndex(e => e.id === id)
-    newState[i].enabled = checked
-    this.setState({ extensions: newState })
+  onManagementChange = () => {
+    this.refreshExtensions().catch(error => console.error(error))
+  }
+
+  setExtensionPending = (id, pending) => {
+    this.setState(({ pendingExtensionIds }) => ({
+      pendingExtensionIds: pending
+        ? [...new Set([...pendingExtensionIds, id])]
+        : pendingExtensionIds.filter(pendingId => pendingId !== id)
+    }))
+  }
+
+  runManagementAction = async (id, action, operation) => {
+    const extension = this.state.extensions.find(item => item.id === id)
+    this.setExtensionPending(id, true)
+    this.setState({ managementError: null })
+
+    try {
+      await operation()
+      await this.refreshExtensions()
+    } catch (error) {
+      this.setState({
+        managementError: `Could not ${action} “${extension?.name || id}”: ${
+          error?.message || String(error)
+        }`
+      })
+    } finally {
+      this.setExtensionPending(id, false)
+    }
+  }
+
+  onToggleExtension = ({ target: { checked, id } }) => {
+    this.runManagementAction(
+      id,
+      checked ? 'enable' : 'disable',
+      () => chrome.management.setEnabled(id, checked)
+    )
+  }
+
+  onRemoveExtension = ({ currentTarget: { id } }) => {
+    this.runManagementAction(
+      id,
+      'remove',
+      () => chrome.management.uninstall(id, { showConfirmDialog: true })
+    )
   }
 
   onStorageChanges = changes => {
@@ -499,10 +572,18 @@ class App extends Component {
     const config = await getConfig()
     this.setState(config)
     chrome.storage.onChanged.addListener(this.onStorageChanges)
+    chrome.management.onDisabled.addListener(this.onManagementChange)
+    chrome.management.onEnabled.addListener(this.onManagementChange)
+    chrome.management.onInstalled.addListener(this.onManagementChange)
+    chrome.management.onUninstalled.addListener(this.onManagementChange)
   }
 
   componentWillUnmount () {
     chrome.storage.onChanged.removeListener(this.onStorageChanges)
+    chrome.management.onDisabled.removeListener(this.onManagementChange)
+    chrome.management.onEnabled.removeListener(this.onManagementChange)
+    chrome.management.onInstalled.removeListener(this.onManagementChange)
+    chrome.management.onUninstalled.removeListener(this.onManagementChange)
   }
 
   render (
@@ -520,6 +601,8 @@ class App extends Component {
       lastAttemptAt,
       lastErrorAt,
       lastSuccessAt,
+      managementError,
+      pendingExtensionIds,
       self,
       tag,
       useCustomColors,
@@ -562,7 +645,10 @@ class App extends Component {
               extensionsErrors="${extensionsErrors}"
               extensionsInfo="${extensionsInfo}"
               extensionsUpdateSummary="${extensionsUpdateSummary}"
-              onDisableExtension="${this.onDisableExtension}"
+              managementError="${managementError}"
+              onRemoveExtension="${this.onRemoveExtension}"
+              onToggleExtension="${this.onToggleExtension}"
+              pendingExtensionIds="${pendingExtensionIds}"
             />
           <//>
         `}
