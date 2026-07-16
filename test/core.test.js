@@ -11,11 +11,24 @@ import {
   getBuildSelectionStatus,
   getChromiumVersionStatus,
   getExtensionDownloadUrl,
+  getWoolyssErrorState,
+  getWoolyssSuccessState,
   hasExtensionUpdate,
   mapPlatformToArch,
   matchExtension,
-  parseUpdateManifest
+  parseUpdateManifest,
+  validateWoolyssResponse
 } from '../js/core.js'
+
+const woolyssResponse = {
+  win64: [{
+    links: [{ label: 'Archive', url: 'https://example.test/chromium.zip' }],
+    revision: '1234567',
+    tag: 'stable',
+    timestamp: 1700000000,
+    version: '150.0.0.1'
+  }]
+}
 
 test('parseUpdateManifest parses apps, update data and XML entities', () => {
   const result = parseUpdateManifest(`
@@ -120,6 +133,101 @@ test('getBuildSelectionStatus distinguishes incomplete and unloaded state', () =
   )
 })
 
+test('validateWoolyssResponse accepts platform build data', () => {
+  assert.deepEqual(validateWoolyssResponse(woolyssResponse), woolyssResponse)
+  assert.deepEqual(
+    validateWoolyssResponse({ ...woolyssResponse, error: null }),
+    woolyssResponse
+  )
+})
+
+test('validateWoolyssResponse normalizes numeric platform collections', () => {
+  const androidBuild = {
+    tag: 'dev-official',
+    version: '152.0.7955.0'
+  }
+
+  assert.deepEqual(
+    validateWoolyssResponse({ android: { 0: androidBuild } }),
+    { android: [androidBuild] }
+  )
+})
+
+test('validateWoolyssResponse rejects API errors and invalid roots', () => {
+  assert.throws(
+    () => validateWoolyssResponse(null),
+    /expected an object/
+  )
+  assert.throws(
+    () => validateWoolyssResponse({ error: 'temporarily unavailable' }),
+    /temporarily unavailable/
+  )
+  assert.throws(
+    () => validateWoolyssResponse({}),
+    /no platforms found/
+  )
+})
+
+test('validateWoolyssResponse rejects malformed builds and links', () => {
+  assert.throws(
+    () => validateWoolyssResponse({ win64: {} }),
+    /build list/
+  )
+  assert.throws(
+    () => validateWoolyssResponse({ win64: [{ tag: 'stable' }] }),
+    /version is invalid/
+  )
+  assert.throws(
+    () => validateWoolyssResponse({
+      win64: [{ tag: 'stable', version: '150.0', timestamp: 'today' }]
+    }),
+    /timestamp is invalid/
+  )
+  assert.throws(
+    () => validateWoolyssResponse({
+      win64: [{
+        links: [{ label: 'Unsafe', url: 'javascript:alert(1)' }],
+        tag: 'stable',
+        version: '150.0'
+      }]
+    }),
+    /links\[0\] is invalid/
+  )
+})
+
+test('Woolyss state transitions track attempts and preserve cached data', () => {
+  assert.deepEqual(getWoolyssSuccessState(woolyssResponse, 1000), {
+    error: null,
+    lastAttemptAt: 1000,
+    lastErrorAt: null,
+    lastSuccessAt: 1000,
+    timestamp: 1000,
+    versions: woolyssResponse,
+    woolyssDataStale: false,
+    woolyssError: null
+  })
+
+  const failed = getWoolyssErrorState(
+    { lastSuccessAt: 1000, versions: woolyssResponse },
+    new Error('network failed'),
+    2000
+  )
+  assert.deepEqual(failed, {
+    error: null,
+    lastAttemptAt: 2000,
+    lastErrorAt: 2000,
+    timestamp: 2000,
+    woolyssDataStale: true,
+    woolyssError: 'network failed'
+  })
+  assert.equal(Object.hasOwn(failed, 'versions'), false)
+  assert.equal(
+    getWoolyssErrorState({}, new Error('first check failed'), 2000)
+      .woolyssDataStale,
+    false
+  )
+})
+
 test('matchExtension only matches an extension with the same id and a version', () => {
   const extension = { id: 'one', version: '1.0.0' }
   assert.equal(matchExtension(extension)({ id: 'one', version: '2.0.0' }), true)
@@ -179,7 +287,7 @@ test('getBadgeStatus only reports a newer remote Chromium version', () => {
   )
 })
 
-test('getBadgeStatus distinguishes combined updates and errors', () => {
+test('getBadgeStatus keeps known updates visible when a later check fails', () => {
   const state = {
     availableVersion: '150.0.0.1',
     currentVersion: '150.0.0.0',
@@ -189,7 +297,11 @@ test('getBadgeStatus distinguishes combined updates and errors', () => {
   }
 
   assert.equal(getBadgeStatus(state), 'both')
-  assert.equal(getBadgeStatus({ ...state, error: 'network error' }), 'error')
+  assert.equal(
+    getBadgeStatus({ ...state, woolyssError: 'network error' }),
+    'both'
+  )
+  assert.equal(getBadgeStatus({ woolyssError: 'network error' }), 'error')
 })
 
 test('getBadgePresentation defines text, color and tooltip for every state', () => {
@@ -243,6 +355,13 @@ test('getBadgePresentation rejects invalid custom colors and exposes defaults', 
     error: '#b40014',
     extensions: '#c2410c'
   })
+})
+
+test('getBadgePresentation marks cached Chromium data in the tooltip', () => {
+  assert.equal(
+    getBadgePresentation('chromium', { woolyssDataStale: true }).title,
+    'A new Chromium version is available (latest Chromium check failed; using cached data)'
+  )
 })
 
 test('createExtensionUpdateUrl preserves query parameters and appends ids', () => {

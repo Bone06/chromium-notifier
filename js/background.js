@@ -3,19 +3,28 @@ import {
   getExtensionsInfo,
   getUserAgentData,
 } from './utils.js'
-import { getBadgePresentation, getBadgeStatus } from './core.js'
+import {
+  getBadgePresentation,
+  getBadgeStatus,
+  getWoolyssErrorState,
+  getWoolyssSuccessState,
+  validateWoolyssResponse
+} from './core.js'
 
 const ALARM_NAME = 'main'
 let currentUpdate
 
 const update = async (...args) => {
   const config = await getConfig()
-  const now = new Date()
+  const now = Date.now()
 
-  console.debug(now.toISOString(), args)
+  console.debug(new Date(now).toISOString(), args)
 
   if (!navigator.onLine) {
-    return console.debug(`We're not online, aborting.`, config)
+    const error = new Error('Browser is offline')
+    console.debug(`We're not online, aborting.`, config)
+    await chrome.storage.local.set(getWoolyssErrorState(config, error, now))
+    return
   } else {
     console.debug('updating', config)
   }
@@ -57,28 +66,18 @@ const update = async (...args) => {
   }
 
   try {
-    const [versions, extensionsResult] = await Promise.all(p)
-    const newState = {
-      error: null,
-      timestamp: now.getTime()
-    }
+    const [response, extensionsResult] = await Promise.all(p)
+    const versions = validateWoolyssResponse(response)
+    const newState = getWoolyssSuccessState(versions, now)
 
     if (extensionsResult) {
       Object.assign(newState, extensionsResult)
     }
 
-    if (versions) {
-      newState.error = versions.error || null
-      newState.versions = !versions.error ? versions : {}
-    }
-
     await chrome.storage.local.set(newState)
   } catch (error) {
     console.error(error)
-    await chrome.storage.local.set({
-      error: error.message || String(error),
-      timestamp: now.getTime()
-    })
+    await chrome.storage.local.set(getWoolyssErrorState(config, error, now))
   }
 }
 
@@ -108,13 +107,14 @@ chrome.storage.onChanged.addListener(async () => {
   const {
     arch,
     badgeColors,
-    error,
     extensions,
     extensionsInfo = [],
     extensionsTrack,
     tag,
     useCustomColors,
-    versions
+    versions,
+    woolyssDataStale,
+    woolyssError
   } = await getConfig()
 
   const current =
@@ -128,16 +128,16 @@ chrome.storage.onChanged.addListener(async () => {
     getBadgeStatus({
       availableVersion: current?.version,
       currentVersion: uaFullVersion,
-      error,
       extensions,
       extensionsInfo,
-      extensionsTrack
+      extensionsTrack,
+      woolyssError
     }),
-    { badgeColors, useCustomColors }
+    { badgeColors, useCustomColors, woolyssDataStale }
   )
 
-  if (error) {
-    console.error(error)
+  if (woolyssError) {
+    console.error(woolyssError)
   }
 
   chrome.action.setBadgeBackgroundColor({ color: badge.color })

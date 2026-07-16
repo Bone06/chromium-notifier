@@ -68,8 +68,11 @@ const ChromiumInfo = ({
   checking,
   current = {},
   currentVersion,
+  lastSuccessAt,
   onCheckNow,
-  tag
+  tag,
+  woolyssDataStale,
+  woolyssError
 }) => {
   const versionStatus = getChromiumVersionStatus(
     currentVersion,
@@ -110,6 +113,16 @@ const ChromiumInfo = ({
         `}
     </ul>
     <div style="font-size: smaller; margin-top: 1em">
+      ${woolyssDataStale &&
+        html`
+          <p class="setting-warning">
+            Latest check failed. Showing data from
+            ${lastSuccessAt
+              ? new Date(lastSuccessAt).toLocaleString()
+              : 'the last successful check'}.
+            ${woolyssError}
+          </p>
+        `}
       ${versionStatus === 'local-newer' &&
         html`
           <p style="margin: 0 0 0.5rem; white-space: normal;">
@@ -499,17 +512,20 @@ class App extends Component {
       badgeColors,
       checking,
       currentVersion,
-      error,
       extensions,
       extensionsErrors,
       extensionsInfo,
       extensionsTrack,
       extensionsUpdateSummary,
+      lastAttemptAt,
+      lastErrorAt,
+      lastSuccessAt,
       self,
       tag,
-      timestamp,
       useCustomColors,
-      versions
+      versions,
+      woolyssDataStale,
+      woolyssError
     }
   ) {
     const current =
@@ -529,8 +545,11 @@ class App extends Component {
               checking="${checking}"
               current="${current}"
               currentVersion="${currentVersion}"
+              lastSuccessAt="${lastSuccessAt}"
               onCheckNow="${this.onCheckNow}"
               tag="${tag}"
+              woolyssDataStale="${woolyssDataStale}"
+              woolyssError="${woolyssError}"
             />
           <//>
         `}
@@ -562,14 +581,22 @@ class App extends Component {
 
       <${Section}>
         <small>
-          ${timestamp
-            ? `Last update: ${new Date(timestamp).toLocaleString()}`
+          ${lastAttemptAt
+            ? `Last check attempt: ${new Date(lastAttemptAt).toLocaleString()}`
             : `Waiting for data…`}
         </small>
-        ${error &&
+        ${lastSuccessAt &&
+          html`
+            <small>
+              Last successful check: ${new Date(lastSuccessAt).toLocaleString()}
+            </small>
+          `}
+        ${woolyssError &&
           html`
             <small style="color: red; margin-top: 0.5rem;">
-              Last error: ${error}
+              Last error${lastErrorAt
+                ? ` (${new Date(lastErrorAt).toLocaleString()})`
+                : ''}: ${woolyssError}
             </small>
           `}
       <//>

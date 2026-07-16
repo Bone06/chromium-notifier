@@ -154,6 +154,126 @@ export const getBuildSelectionStatus = ({ arch, tag, versions = {} }) => {
   return 'valid'
 }
 
+const isObject = value =>
+  Boolean(value && typeof value === 'object' && !Array.isArray(value))
+
+const isHttpUrl = value => {
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol)
+  } catch {
+    return false
+  }
+}
+
+export const validateWoolyssResponse = response => {
+  if (!isObject(response)) {
+    throw new Error('Invalid Woolyss response: expected an object')
+  }
+  if (response.error) {
+    throw new Error(`Woolyss API: ${response.error}`)
+  }
+
+  const responseVersions = Object.fromEntries(
+    Object.entries(response).filter(([key]) => key !== 'error')
+  )
+
+  if (!Object.keys(responseVersions).length) {
+    throw new Error('Invalid Woolyss response: no platforms found')
+  }
+
+  const versions = Object.fromEntries(
+    Object.entries(responseVersions).map(([platform, buildCollection]) => {
+      const collectionKeys = isObject(buildCollection)
+        ? Object.keys(buildCollection)
+        : []
+      const builds = Array.isArray(buildCollection)
+        ? buildCollection
+        : isObject(buildCollection) &&
+          collectionKeys.length > 0 &&
+          collectionKeys.every(key => /^\d+$/.test(key))
+        ? Object.values(buildCollection)
+        : null
+
+      if (!builds) {
+      throw new Error(
+        `Invalid Woolyss response: ${platform} must contain a build list`
+      )
+      }
+
+      builds.forEach((build, index) => {
+        const location = `${platform}[${index}]`
+        if (!isObject(build)) {
+          throw new Error(`Invalid Woolyss response: ${location} is not a build`)
+        }
+        if (typeof build.tag !== 'string' || !build.tag.trim()) {
+          throw new Error(`Invalid Woolyss response: ${location}.tag is missing`)
+        }
+        if (!/^\d+(?:\.\d+)*$/.test(build.version || '')) {
+          throw new Error(
+            `Invalid Woolyss response: ${location}.version is invalid`
+          )
+        }
+        if (
+          build.timestamp !== undefined &&
+          (typeof build.timestamp !== 'number' ||
+            !Number.isFinite(build.timestamp))
+        ) {
+          throw new Error(
+            `Invalid Woolyss response: ${location}.timestamp is invalid`
+          )
+        }
+        if (build.links !== undefined && !Array.isArray(build.links)) {
+          throw new Error(
+            `Invalid Woolyss response: ${location}.links is invalid`
+          )
+        }
+        build.links?.forEach((link, linkIndex) => {
+          if (
+            !isObject(link) ||
+            typeof link.label !== 'string' ||
+            !link.label.trim() ||
+            !isHttpUrl(link.url)
+          ) {
+            throw new Error(
+              `Invalid Woolyss response: ${location}.links[${linkIndex}] is invalid`
+            )
+          }
+        })
+      })
+
+      return [platform, builds]
+    })
+  )
+
+  return versions
+}
+
+export const getWoolyssSuccessState = (versions, now = Date.now()) => ({
+  error: null,
+  lastAttemptAt: now,
+  lastErrorAt: null,
+  lastSuccessAt: now,
+  timestamp: now,
+  versions,
+  woolyssDataStale: false,
+  woolyssError: null
+})
+
+export const getWoolyssErrorState = (
+  previousState,
+  error,
+  now = Date.now()
+) => ({
+  error: null,
+  lastAttemptAt: now,
+  lastErrorAt: now,
+  timestamp: now,
+  woolyssDataStale: Boolean(
+    previousState?.versions && Object.keys(previousState.versions).length
+  ),
+  woolyssError: error?.message || String(error)
+})
+
 export const hasExtensionUpdate = (extension, info) =>
   Boolean(
     info &&
@@ -166,15 +286,11 @@ export const hasExtensionUpdate = (extension, info) =>
 export const getBadgeStatus = ({
   availableVersion,
   currentVersion,
-  error,
   extensions = [],
   extensionsInfo = [],
-  extensionsTrack = false
+  extensionsTrack = false,
+  woolyssError
 }) => {
-  if (error) {
-    return 'error'
-  }
-
   const chromiumUpdate =
     getChromiumVersionStatus(currentVersion, availableVersion) ===
     'update-available'
@@ -188,13 +304,15 @@ export const getBadgeStatus = ({
     )
   )
 
-  return chromiumUpdate && extensionUpdate
+  const updateStatus = chromiumUpdate && extensionUpdate
     ? 'both'
     : chromiumUpdate
     ? 'chromium'
     : extensionUpdate
     ? 'extensions'
-    : 'none'
+    : null
+
+  return updateStatus || (woolyssError ? 'error' : 'none')
 }
 
 export const DEFAULT_BADGE_COLORS = Object.freeze({
@@ -215,7 +333,11 @@ export const getDefaultBadgeColors = () => ({ ...DEFAULT_BADGE_COLORS })
 
 export const getBadgePresentation = (
   status,
-  { badgeColors = {}, useCustomColors = false } = {}
+  {
+    badgeColors = {},
+    useCustomColors = false,
+    woolyssDataStale = false
+  } = {}
 ) => {
   const presentations = ({
   both: {
@@ -255,6 +377,9 @@ export const getBadgePresentation = (
 
   return {
     ...presentation,
-    color: customColor || presentation.color
+    color: customColor || presentation.color,
+    title: woolyssDataStale
+      ? `${presentation.title} (latest Chromium check failed; using cached data)`
+      : presentation.title
   }
 }
