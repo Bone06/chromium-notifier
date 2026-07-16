@@ -6,9 +6,11 @@ import {
   getUserAgentData
 } from './utils.js'
 import {
+  DEFAULT_BADGE_COLORS,
   getBuildSelectionStatus,
-  getExtensionDownloadUrl,
   getChromiumVersionStatus,
+  getDefaultBadgeColors,
+  getExtensionDownloadUrl,
   hasExtensionUpdate,
   matchExtension
 } from './core.js'
@@ -20,6 +22,15 @@ const html = htm.bind(h)
  */
 
 const changeBoolSetting = ({ target: { checked, name } }) => {
+  if (name === 'useCustomColors') {
+    chrome.storage.local.set(
+      checked
+        ? { badgeColors: getDefaultBadgeColors(), useCustomColors: true }
+        : { badgeColors: null, useCustomColors: false }
+    )
+    return
+  }
+
   const newState = {
     [name]: checked
   }
@@ -119,6 +130,13 @@ const ChromiumInfo = ({
   </details>
 `
 }
+
+const changeBadgeColor = ({ target: { name, value } }) =>
+  chrome.storage.local.get('badgeColors', ({ badgeColors = {} }) =>
+    chrome.storage.local.set({
+      badgeColors: { ...badgeColors, [name]: value }
+    })
+  )
 
 const ExtensionsInfo = ({
   currentVersion,
@@ -298,9 +316,11 @@ class Section extends Component {
 
 const Settings = ({
   arch,
+  badgeColors = {},
   extensionsTrack,
   selectionStatus,
   tag,
+  useCustomColors,
   versions
 }) => html`
   <details open="${selectionStatus !== 'valid'}">
@@ -379,6 +399,41 @@ const Settings = ({
         </label>
       </p>
 
+      <p style="margin: 0;">
+        <label>
+          <input
+            checked="${useCustomColors}"
+            name="useCustomColors"
+            onChange="${changeBoolSetting}"
+            style="margin: 0 0.25rem 0 0"
+            type="checkbox"
+          />
+          Use custom colors
+        </label>
+      </p>
+
+      ${useCustomColors &&
+        html`
+          <div class="badge-colors">
+            ${[
+              ['chromium', 'Chromium updates'],
+              ['extensions', 'Extension updates'],
+              ['both', 'Multiple updates'],
+              ['error', 'Errors']
+            ].map(([name, label]) => html`
+              <label>
+                <input
+                  name="${name}"
+                  onChange="${changeBadgeColor}"
+                  type="color"
+                  value="${badgeColors?.[name] || DEFAULT_BADGE_COLORS[name]}"
+                />
+                ${label}
+              </label>
+            `)}
+          </div>
+        `}
+
     </div>
   </details>
 `
@@ -390,6 +445,7 @@ const Settings = ({
 class App extends Component {
   state = {
     checking: false,
+    badgeColors: {},
     extensions: [],
     extensionsErrors: [],
     extensionsInfo: [],
@@ -440,6 +496,7 @@ class App extends Component {
     props,
     {
       arch,
+      badgeColors,
       checking,
       currentVersion,
       error,
@@ -451,6 +508,7 @@ class App extends Component {
       self,
       tag,
       timestamp,
+      useCustomColors,
       versions
     }
   ) {
@@ -493,9 +551,11 @@ class App extends Component {
       <${Section}>
         <${Settings}
           arch="${arch}"
+          badgeColors="${badgeColors}"
           extensionsTrack="${extensionsTrack}"
           selectionStatus="${selectionStatus}"
           tag="${tag}"
+          useCustomColors="${useCustomColors}"
           versions="${versions}"
         />
       <//>

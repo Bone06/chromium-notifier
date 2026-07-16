@@ -65,6 +65,27 @@ summary {
   white-space: normal;
 }
 
+.badge-colors {
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: repeat(2, auto);
+  margin-top: 0.75rem;
+}
+
+.badge-colors label {
+  align-items: center;
+  display: flex;
+}
+
+.badge-colors input[type="color"] {
+  background: none;
+  border: 0;
+  height: 1.5rem;
+  margin-right: 0.35rem;
+  padding: 0;
+  width: 1.75rem;
+}
+
 ul {
   list-style-type: none;
   margin: 0;

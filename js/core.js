@@ -163,19 +163,98 @@ export const hasExtensionUpdate = (extension, info) =>
       compareVersions(info.version, extension.version) > 0
   )
 
-export const shouldShowNewBadge = ({
+export const getBadgeStatus = ({
   availableVersion,
   currentVersion,
+  error,
   extensions = [],
   extensionsInfo = [],
   extensionsTrack = false
-}) =>
-  getChromiumVersionStatus(currentVersion, availableVersion) ===
-    'update-available' ||
-  (extensionsTrack &&
+}) => {
+  if (error) {
+    return 'error'
+  }
+
+  const chromiumUpdate =
+    getChromiumVersionStatus(currentVersion, availableVersion) ===
+    'update-available'
+  const extensionUpdate = Boolean(
+    extensionsTrack &&
     extensions.some(extension =>
       hasExtensionUpdate(
         extension,
         extensionsInfo.find(({ id }) => id === extension.id)
       )
-    ))
+    )
+  )
+
+  return chromiumUpdate && extensionUpdate
+    ? 'both'
+    : chromiumUpdate
+    ? 'chromium'
+    : extensionUpdate
+    ? 'extensions'
+    : 'none'
+}
+
+export const DEFAULT_BADGE_COLORS = Object.freeze({
+  both: '#7e22ce',
+  chromium: '#0096b4',
+  error: '#b40014',
+  extensions: '#c2410c'
+})
+
+const hexToRgba = hex => {
+  const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex || '')
+  return match
+    ? [...match.slice(1).map(value => Number.parseInt(value, 16)), 255]
+    : null
+}
+
+export const getDefaultBadgeColors = () => ({ ...DEFAULT_BADGE_COLORS })
+
+export const getBadgePresentation = (
+  status,
+  { badgeColors = {}, useCustomColors = false } = {}
+) => {
+  const presentations = ({
+  both: {
+    color: [126, 34, 206, 255],
+    text: 'NEW+',
+    title: 'Chromium and extension updates are available'
+  },
+  chromium: {
+    color: [0, 150, 180, 255],
+    text: 'New',
+    title: 'A new Chromium version is available'
+  },
+  error: {
+    color: [180, 0, 20, 255],
+    text: '!',
+    title: 'Update check failed'
+  },
+  extensions: {
+    color: [194, 65, 12, 255],
+    text: 'EXT',
+    title: 'Extension updates are available'
+  },
+  none: {
+    color: [0, 150, 180, 255],
+    text: '',
+    title: 'Chromium is up to date'
+  }
+  })
+  const presentation = presentations[status] || {
+    color: [0, 150, 180, 255],
+    text: '',
+    title: 'Chromium update status is unavailable'
+  }
+  const customColor = useCustomColors
+    ? hexToRgba(badgeColors?.[status])
+    : null
+
+  return {
+    ...presentation,
+    color: customColor || presentation.color
+  }
+}

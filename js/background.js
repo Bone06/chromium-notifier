@@ -3,7 +3,7 @@ import {
   getExtensionsInfo,
   getUserAgentData,
 } from './utils.js'
-import { shouldShowNewBadge } from './core.js'
+import { getBadgePresentation, getBadgeStatus } from './core.js'
 
 const ALARM_NAME = 'main'
 let currentUpdate
@@ -107,11 +107,13 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 chrome.storage.onChanged.addListener(async () => {
   const {
     arch,
+    badgeColors,
     error,
     extensions,
     extensionsInfo = [],
     extensionsTrack,
     tag,
+    useCustomColors,
     versions
   } = await getConfig()
 
@@ -122,24 +124,25 @@ chrome.storage.onChanged.addListener(async () => {
     versions[arch].find(v => v.tag === tag)
 
   const { uaFullVersion } = await getUserAgentData()
-
-  chrome.action.setBadgeText({
-    text: shouldShowNewBadge({
+  const badge = getBadgePresentation(
+    getBadgeStatus({
       availableVersion: current?.version,
       currentVersion: uaFullVersion,
+      error,
       extensions,
       extensionsInfo,
       extensionsTrack
-    }) ? 'New' : ''
-  })
+    }),
+    { badgeColors, useCustomColors }
+  )
 
   if (error) {
     console.error(error)
-    chrome.action.setBadgeBackgroundColor({ color: [180, 0, 20, 255] })
-    chrome.action.setBadgeText({ text: 'Error!' })
-  } else {
-    chrome.action.setBadgeBackgroundColor({ color: [0, 150, 180, 255] })
   }
+
+  chrome.action.setBadgeBackgroundColor({ color: badge.color })
+  chrome.action.setBadgeText({ text: badge.text })
+  chrome.action.setTitle({ title: badge.title })
 })
 
 chrome.alarms.onAlarm.addListener(alarm => {

@@ -5,14 +5,16 @@ import {
   compareVersions,
   createExtensionUpdateBatches,
   createExtensionUpdateUrl,
+  getDefaultBadgeColors,
+  getBadgePresentation,
+  getBadgeStatus,
   getBuildSelectionStatus,
   getChromiumVersionStatus,
   getExtensionDownloadUrl,
   hasExtensionUpdate,
   mapPlatformToArch,
   matchExtension,
-  parseUpdateManifest,
-  shouldShowNewBadge
+  parseUpdateManifest
 } from '../js/core.js'
 
 test('parseUpdateManifest parses apps, update data and XML entities', () => {
@@ -140,7 +142,7 @@ test('hasExtensionUpdate only accepts a newer version for the same extension', (
   )
 })
 
-test('shouldShowNewBadge ignores stale extension updates when tracking is disabled', () => {
+test('getBadgeStatus ignores stale extension updates when tracking is disabled', () => {
   const state = {
     availableVersion: '150.0.0.0',
     currentVersion: '150.0.0.0',
@@ -149,32 +151,98 @@ test('shouldShowNewBadge ignores stale extension updates when tracking is disabl
     extensionsTrack: false
   }
 
-  assert.equal(shouldShowNewBadge(state), false)
-  assert.equal(shouldShowNewBadge({ ...state, extensionsTrack: true }), true)
+  assert.equal(getBadgeStatus(state), 'none')
+  assert.equal(getBadgeStatus({ ...state, extensionsTrack: true }), 'extensions')
 })
 
-test('shouldShowNewBadge only reports a newer remote Chromium version', () => {
+test('getBadgeStatus only reports a newer remote Chromium version', () => {
   assert.equal(
-    shouldShowNewBadge({
+    getBadgeStatus({
       availableVersion: '150.0.0.1',
       currentVersion: '150.0.0.0'
     }),
-    true
+    'chromium'
   )
   assert.equal(
-    shouldShowNewBadge({
+    getBadgeStatus({
       availableVersion: '150.0.0.0',
       currentVersion: '150.0.0.0'
     }),
-    false
+    'none'
   )
   assert.equal(
-    shouldShowNewBadge({
+    getBadgeStatus({
       availableVersion: '149.0.0.0',
       currentVersion: '150.0.0.0'
     }),
-    false
+    'none'
   )
+})
+
+test('getBadgeStatus distinguishes combined updates and errors', () => {
+  const state = {
+    availableVersion: '150.0.0.1',
+    currentVersion: '150.0.0.0',
+    extensions: [{ id: 'one', version: '1.0.0' }],
+    extensionsInfo: [{ id: 'one', version: '2.0.0' }],
+    extensionsTrack: true
+  }
+
+  assert.equal(getBadgeStatus(state), 'both')
+  assert.equal(getBadgeStatus({ ...state, error: 'network error' }), 'error')
+})
+
+test('getBadgePresentation defines text, color and tooltip for every state', () => {
+  assert.deepEqual(getBadgePresentation('chromium'), {
+    color: [0, 150, 180, 255],
+    text: 'New',
+    title: 'A new Chromium version is available'
+  })
+  assert.deepEqual(getBadgePresentation('extensions'), {
+    color: [194, 65, 12, 255],
+    text: 'EXT',
+    title: 'Extension updates are available'
+  })
+  assert.deepEqual(getBadgePresentation('both'), {
+    color: [126, 34, 206, 255],
+    text: 'NEW+',
+    title: 'Chromium and extension updates are available'
+  })
+  assert.equal(getBadgePresentation('error').text, '!')
+  assert.equal(getBadgePresentation('none').text, '')
+})
+
+test('getBadgePresentation applies valid custom colors when enabled', () => {
+  assert.deepEqual(
+    getBadgePresentation('extensions', {
+      badgeColors: { extensions: '#123456' },
+      useCustomColors: true
+    }).color,
+    [18, 52, 86, 255]
+  )
+  assert.deepEqual(
+    getBadgePresentation('extensions', {
+      badgeColors: { extensions: '#123456' },
+      useCustomColors: false
+    }).color,
+    [194, 65, 12, 255]
+  )
+})
+
+test('getBadgePresentation rejects invalid custom colors and exposes defaults', () => {
+  assert.deepEqual(
+    getBadgePresentation('both', {
+      badgeColors: { both: 'purple' },
+      useCustomColors: true
+    }).color,
+    [126, 34, 206, 255]
+  )
+  assert.deepEqual(getDefaultBadgeColors(), {
+    both: '#7e22ce',
+    chromium: '#0096b4',
+    error: '#b40014',
+    extensions: '#c2410c'
+  })
 })
 
 test('createExtensionUpdateUrl preserves query parameters and appends ids', () => {
