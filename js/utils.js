@@ -10,7 +10,7 @@ const addIfNew = (arr = [], item) =>
 export const getSelf = () =>
   new Promise(resolve => chrome.management.get(chrome.runtime.id, resolve))
 
-const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
+export const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
   const url = createExtensionUpdateUrl(updateUrl, ids, prodversion)
 
   const response = await fetch(url)
@@ -37,7 +37,7 @@ const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
   })
 }
 
-const fetchExtensionsInfo = async (extensions, prodversion) => {
+export const fetchExtensionsInfo = async (extensions, prodversion) => {
   const jobs = extensions.reduce((acc, { id, updateUrl }) => {
     if (updateUrl) {
       acc[updateUrl] = addIfNew(acc[updateUrl], id)
