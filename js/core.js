@@ -135,6 +135,25 @@ export const getChromiumVersionStatus = (currentVersion, availableVersion) => {
     : 'current'
 }
 
+export const getBuildSelectionStatus = ({ arch, tag, versions = {} }) => {
+  if (!arch) {
+    return 'platform-required'
+  }
+  if (!tag) {
+    return 'tag-required'
+  }
+  if (!Object.keys(versions).length) {
+    return 'no-data'
+  }
+  if (!Object.hasOwn(versions, arch)) {
+    return 'platform-unavailable'
+  }
+  if (!versions[arch].some(build => build.tag === tag)) {
+    return 'tag-unavailable'
+  }
+  return 'valid'
+}
+
 export const hasExtensionUpdate = (extension, info) =>
   Boolean(
     info &&

@@ -59,6 +59,12 @@ summary {
   cursor: pointer;
 }
 
+.setting-warning {
+  color: #b00020;
+  margin: 0 0 0.75rem;
+  white-space: normal;
+}
+
 ul {
   list-style-type: none;
   margin: 0;

@@ -1,11 +1,12 @@
-import { Component, h, render } from './vendor/preact-10.0.1.js'
-import htm from './vendor/htm-2.2.1.js'
+import { Component, h, render } from './vendor/preact-10.29.7.js'
+import htm from './vendor/htm-3.1.1.js'
 import {
   getConfig,
   getExtensionsInfo,
   getUserAgentData
 } from './utils.js'
 import {
+  getBuildSelectionStatus,
   getExtensionDownloadUrl,
   getChromiumVersionStatus,
   hasExtensionUpdate,
@@ -298,12 +299,27 @@ class Section extends Component {
 const Settings = ({
   arch,
   extensionsTrack,
+  selectionStatus,
   tag,
   versions
 }) => html`
-  <details open="${!arch || !tag}">
+  <details open="${selectionStatus !== 'valid'}">
     <summary>Settings</summary>
     <div>
+      ${selectionStatus === 'platform-unavailable' &&
+        html`
+          <p class="setting-warning">
+            The selected platform is no longer available. Please choose
+            another platform.
+          </p>
+        `}
+      ${selectionStatus === 'tag-unavailable' &&
+        html`
+          <p class="setting-warning">
+            The selected Chromium build is no longer available. Please choose
+            another tag.
+          </p>
+        `}
       <label>
         <p>Platform</p>
         <select
@@ -313,6 +329,12 @@ const Settings = ({
           <option disabled="${arch && versions[arch]}" value=""
             >Choose platform…</option
           >
+          ${selectionStatus === 'platform-unavailable' &&
+            html`
+              <option disabled selected value="${arch}"
+                >${arch} (unavailable)</option
+              >
+            `}
           ${Object.keys(versions).map(
             archOpt => html`
               <option selected="${archOpt === arch}" value="${archOpt}"
@@ -326,6 +348,12 @@ const Settings = ({
         <p>Tag</p>
         <select disabled="${!arch || !versions[arch]}" onChange="${changeTag}">
           <option disabled="${tag}" value="">Choose tag…</option>
+          ${selectionStatus === 'tag-unavailable' &&
+            html`
+              <option disabled selected value="${tag}"
+                >${tag} (unavailable)</option
+              >
+            `}
           ${arch &&
             versions[arch] &&
             versions[arch].map(
@@ -428,6 +456,7 @@ class App extends Component {
   ) {
     const current =
       arch && versions[arch] && versions[arch].find(v => v.tag === tag)
+    const selectionStatus = getBuildSelectionStatus({ arch, tag, versions })
 
     return html`
       <${Section}><${Header} version="${self && self.version}"/><//>
@@ -465,6 +494,7 @@ class App extends Component {
         <${Settings}
           arch="${arch}"
           extensionsTrack="${extensionsTrack}"
+          selectionStatus="${selectionStatus}"
           tag="${tag}"
           versions="${versions}"
         />

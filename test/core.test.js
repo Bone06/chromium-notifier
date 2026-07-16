@@ -6,6 +6,7 @@ import {
   createExtensionUpdateBatches,
   createExtensionUpdateUrl,
   getExtensionDownloadUrl,
+  getBuildSelectionStatus,
   getChromiumVersionStatus,
   hasExtensionUpdate,
   mapPlatformToArch,
@@ -83,6 +84,37 @@ test('getChromiumVersionStatus rejects missing or malformed versions', () => {
   assert.equal(getChromiumVersionStatus(undefined, '150.0.0.0'), 'unknown')
   assert.equal(getChromiumVersionStatus('150.0.0.0', undefined), 'unknown')
   assert.equal(getChromiumVersionStatus('Chromium 150', '150.0.0.0'), 'unknown')
+})
+
+test('getBuildSelectionStatus validates the selected platform and tag', () => {
+  const versions = {
+    win64: [{ tag: 'stable' }, { tag: 'development' }]
+  }
+
+  assert.equal(
+    getBuildSelectionStatus({ arch: 'win64', tag: 'stable', versions }),
+    'valid'
+  )
+  assert.equal(
+    getBuildSelectionStatus({ arch: 'linux', tag: 'stable', versions }),
+    'platform-unavailable'
+  )
+  assert.equal(
+    getBuildSelectionStatus({ arch: 'win64', tag: 'removed', versions }),
+    'tag-unavailable'
+  )
+})
+
+test('getBuildSelectionStatus distinguishes incomplete and unloaded state', () => {
+  assert.equal(getBuildSelectionStatus({}), 'platform-required')
+  assert.equal(
+    getBuildSelectionStatus({ arch: 'win64', versions: {} }),
+    'tag-required'
+  )
+  assert.equal(
+    getBuildSelectionStatus({ arch: 'win64', tag: 'stable', versions: {} }),
+    'no-data'
+  )
 })
 
 test('matchExtension only matches an extension with the same id and a version', () => {
