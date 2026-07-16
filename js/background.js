@@ -1,9 +1,9 @@
 import {
   getConfig,
   getExtensionsInfo,
-  hasExtensionUpdate,
   getUserAgentData,
 } from './utils.js'
+import { hasExtensionUpdate } from './core.js'
 
 const ALARM_NAME = 'main'
 let currentUpdate

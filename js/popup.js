@@ -3,10 +3,13 @@ import htm from './vendor/htm-2.2.1.js'
 import {
   getConfig,
   getExtensionsInfo,
-  getUserAgentData,
-  hasExtensionUpdate,
-  matchExtension,
+  getUserAgentData
 } from './utils.js'
+import {
+  getExtensionDownloadUrl,
+  hasExtensionUpdate,
+  matchExtension
+} from './core.js'
 
 const html = htm.bind(h)
 
@@ -42,19 +45,6 @@ const changePlatform = e =>
 const changeTag = e => chrome.storage.local.set({ tag: e.target.value })
 
 const removeExt = e => chrome.management.uninstall(e.currentTarget.id)
-
-const getDownloadUrl = (info, currentVersion) => {
-  if (!info.codebase.includes('clients2.googleusercontent.com')) {
-    return info.codebase
-  }
-
-  const url = new URL(info.updateUrl)
-  url.searchParams.set('response', 'redirect')
-  url.searchParams.set('acceptformat', 'crx2,crx3')
-  url.searchParams.set('prodversion', currentVersion)
-  url.searchParams.set('x', `id=${info.id}&installsource=ondemand&uc`)
-  return url.href
-}
 
 /*
  * Components
@@ -147,7 +137,7 @@ const ExtensionsInfo = ({
                     html`
                       <a
                         class="badge"
-                        href="${getDownloadUrl(info, currentVersion)}"
+                        href="${getExtensionDownloadUrl(info, currentVersion)}"
                         target="_blank"
                         >v${info.version}</a
                       >

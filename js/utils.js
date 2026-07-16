@@ -1,59 +1,17 @@
+import {
+  createExtensionUpdateUrl,
+  mapPlatformToArch,
+  parseUpdateManifest
+} from './core.js'
+
 const addIfNew = (arr = [], item) =>
   item === undefined ? arr : [...new Set([...arr]).add(item)]
-
-const decodeXml = value =>
-  value.replace(/&(amp|lt|gt|quot|apos);/g, (_, entity) => ({
-    amp: '&',
-    lt: '<',
-    gt: '>',
-    quot: '"',
-    apos: "'"
-  })[entity])
-
-const getAttributes = source =>
-  Array.from(source.matchAll(/([\w:-]+)\s*=\s*(["'])(.*?)\2/gs)).reduce(
-    (attributes, [, name, , value]) => ({
-      ...attributes,
-      [name]: decodeXml(value)
-    }),
-    {}
-  )
-
-const parseUpdateManifest = text => {
-  if (/<(?:[\w-]+:)?parsererror\b/i.test(text)) {
-    throw new Error('Invalid extension update manifest')
-  }
-
-  const apps = Array.from(
-    text.matchAll(
-      /<(?:[\w-]+:)?app\b([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?app\s*>/gi
-    )
-  )
-
-  if (!apps.length && !/<(?:[\w-]+:)?gupdate\b/i.test(text)) {
-    throw new Error('Invalid extension update manifest')
-  }
-
-  return apps.map(([, appAttributes, contents]) => {
-    const updateCheck = contents.match(
-      /<(?:[\w-]+:)?updatecheck\b([^>]*)\/?\s*>/i
-    )
-
-    return {
-      app: getAttributes(appAttributes),
-      updatecheck: updateCheck ? getAttributes(updateCheck[1]) : null
-    }
-  })
-}
 
 export const getSelf = () =>
   new Promise(resolve => chrome.management.get(chrome.runtime.id, resolve))
 
 const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
-  const url = new URL(updateUrl)
-  url.searchParams.set('acceptformat', 'crx2,crx3')
-  url.searchParams.set('prodversion', prodversion)
-  ids.forEach(id => url.searchParams.append('x', `id=${id}&uc`))
+  const url = createExtensionUpdateUrl(updateUrl, ids, prodversion)
 
   const response = await fetch(url)
   if (!response.ok) {
@@ -134,17 +92,11 @@ export const getUserAgentData = async () => {
 
 export const getConfig = () =>
   new Promise(resolve =>
-    getUserAgentData().then(({ arch: cpuArch, os, uaFullVersion }) => {
+    getUserAgentData().then(({ arch, os, uaFullVersion }) => {
       chrome.management.getAll(extensions =>
         chrome.storage.local.get(store => {
           if (!store.arch) {
-            store.arch = os === 'mac'
-              ? 'mac'
-              : os === 'win' && cpuArch === 'x86-64'
-              ? 'win64'
-              : os === 'win'
-              ? 'win32'
-              : undefined
+            store.arch = mapPlatformToArch({ arch, os })
           }
           getSelf().then(self =>
             resolve({
@@ -173,30 +125,3 @@ export const getExtensionsInfo = async currentVersion => {
 
   return await fetchExtensionsInfo(extensions, currentVersion)
 }
-
-export const matchExtension = ext => ({ id, updateUrl, version }) => {
-  return Boolean(version && id === ext.id)
-}
-
-const compareVersions = (left = '', right = '') => {
-  const a = left.split('.').map(part => Number(part) || 0)
-  const b = right.split('.').map(part => Number(part) || 0)
-  const length = Math.max(a.length, b.length)
-
-  for (let i = 0; i < length; i += 1) {
-    if ((a[i] || 0) !== (b[i] || 0)) {
-      return (a[i] || 0) - (b[i] || 0)
-    }
-  }
-
-  return 0
-}
-
-export const hasExtensionUpdate = (extension, info) =>
-  Boolean(
-    info &&
-      info.id === extension.id &&
-      info.status !== 'noupdate' &&
-      info.version &&
-      compareVersions(info.version, extension.version) > 0
-  )
