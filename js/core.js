@@ -42,7 +42,9 @@ export const parseUpdateManifest = text => {
 export const createExtensionUpdateUrl = (updateUrl, ids, prodversion) => {
   const url = new URL(updateUrl)
   url.searchParams.set('acceptformat', 'crx2,crx3')
-  url.searchParams.set('prodversion', prodversion)
+  if (prodversion) {
+    url.searchParams.set('prodversion', prodversion)
+  }
   ids.forEach(id => url.searchParams.append('x', `id=${id}&uc`))
   return url
 }
@@ -87,19 +89,89 @@ export const getExtensionDownloadUrl = (info, currentVersion) => {
   const url = new URL(info.updateUrl)
   url.searchParams.set('response', 'redirect')
   url.searchParams.set('acceptformat', 'crx2,crx3')
-  url.searchParams.set('prodversion', currentVersion)
+  if (currentVersion) {
+    url.searchParams.set('prodversion', currentVersion)
+  }
   url.searchParams.set('x', `id=${info.id}&installsource=ondemand&uc`)
   return url.href
 }
 
-export const mapPlatformToArch = ({ arch, os }) =>
-  os === 'mac'
-    ? 'mac'
-    : os === 'win' && arch === 'x86-64'
-    ? 'win64'
-    : os === 'win'
-    ? 'win32'
-    : undefined
+export const mapPlatformToArch = ({ arch, os }) => {
+  if (os === 'mac' || os === 'linux' || os === 'android') {
+    return os
+  }
+  if (os === 'win' && arch === 'x86-32') {
+    return 'win32'
+  }
+  if (os === 'win' && ['x86-64', 'arm64'].includes(arch)) {
+    return 'win64'
+  }
+  return undefined
+}
+
+const validBrowserVersion = version =>
+  typeof version === 'string' && /^\d+(?:\.\d+){0,3}$/.test(version)
+
+export const extractChromiumVersion = (userAgent = '') => {
+  const version = userAgent.match(
+    /(?:Chromium|Chrome)\/([0-9]+(?:\.[0-9]+){0,3})/i
+  )?.[1]
+  return validBrowserVersion(version) ? version : undefined
+}
+
+export const getChromiumVersionFromUserAgentData = (data = {}) => {
+  const fullVersionList = Array.isArray(data.fullVersionList)
+    ? data.fullVersionList
+    : []
+  const brands = Array.isArray(data.brands) ? data.brands : []
+  const candidates = [
+    fullVersionList.find(({ brand }) => /^Chromium$/i.test(brand))?.version,
+    fullVersionList.find(({ brand }) => /Chrome/i.test(brand))?.version,
+    data.uaFullVersion,
+    brands.find(({ brand }) => /^Chromium$/i.test(brand))?.version,
+    brands.find(({ brand }) => /Chrome/i.test(brand))?.version
+  ]
+
+  return candidates.find(validBrowserVersion)
+}
+
+export const CURRENT_SCHEMA_VERSION = 1
+
+export const migrateStoredConfig = (store = {}) => {
+  const schemaVersion = Number.isInteger(store.schemaVersion)
+    ? store.schemaVersion
+    : 0
+
+  if (schemaVersion >= CURRENT_SCHEMA_VERSION) {
+    return { ...store }
+  }
+
+  const migrated = {
+    ...store,
+    error: null,
+    schemaVersion: CURRENT_SCHEMA_VERSION
+  }
+  const timestamp = Number(store.timestamp)
+  const hasTimestamp = Number.isFinite(timestamp) && timestamp > 0
+  const hasVersions = Boolean(
+    store.versions && Object.keys(store.versions).length
+  )
+
+  if (!migrated.lastAttemptAt && hasTimestamp) {
+    migrated.lastAttemptAt = timestamp
+  }
+  if (!migrated.lastSuccessAt && hasTimestamp && hasVersions && !store.error) {
+    migrated.lastSuccessAt = timestamp
+  }
+  if (!migrated.woolyssError && store.error) {
+    migrated.woolyssError = String(store.error)
+  }
+  if (migrated.woolyssDataStale === undefined && store.error) {
+    migrated.woolyssDataStale = hasVersions
+  }
+
+  return migrated
+}
 
 export const matchExtension = extension => ({ id, version }) =>
   Boolean(version && id === extension.id)
@@ -211,9 +283,9 @@ export const validateWoolyssResponse = response => {
         : null
 
       if (!builds) {
-      throw new Error(
-        `Invalid Woolyss response: ${platform} must contain a build list`
-      )
+        throw new Error(
+          `Invalid Woolyss response: ${platform} must contain a build list`
+        )
       }
 
       builds.forEach((build, index) => {

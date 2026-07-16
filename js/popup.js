@@ -82,7 +82,10 @@ const ChromiumInfo = ({
 
   return html`
   <details open="${versionStatus === 'update-available'}">
-    <summary>Chromium <code>v${currentVersion}</code></summary>
+    <summary>
+      <span>Chromium </span>
+      <code>${currentVersion ? `v${currentVersion}` : 'version unavailable'}</code>
+    </summary>
     <ul>
       <li>
         <span>Available: </span>

@@ -1,8 +1,12 @@
 import {
   createExtensionUpdateBatches,
   createExtensionUpdateUrl,
+  CURRENT_SCHEMA_VERSION,
+  extractChromiumVersion,
   filterRelevantExtensions,
+  getChromiumVersionFromUserAgentData,
   mapPlatformToArch,
+  migrateStoredConfig,
   parseUpdateManifest
 } from './core.js'
 
@@ -123,19 +127,19 @@ export const getUserAgentData = async () => {
         'fullVersionList',
         'uaFullVersion'
       ])
-      const chromium = data.fullVersionList?.find(({ brand }) =>
-        /Chromium|Chrome/i.test(brand)
-      )
-      uaFullVersion = chromium?.version || data.uaFullVersion
+      uaFullVersion = getChromiumVersionFromUserAgentData({
+        ...data,
+        brands: navigator.userAgentData.brands
+      })
     } catch (error) {
       console.debug('User-Agent Client Hints unavailable', error)
     }
   }
 
   if (!uaFullVersion) {
-    uaFullVersion = navigator.userAgent.match(
-      /(?:Chrome|Chromium)\/([0-9]+(?:\.[0-9]+){1,3})/
-    )?.[1]
+    uaFullVersion = getChromiumVersionFromUserAgentData({
+      brands: navigator.userAgentData?.brands
+    }) || extractChromiumVersion(navigator.userAgent)
   }
 
   const platformInfo = await new Promise(resolve =>
@@ -145,13 +149,24 @@ export const getUserAgentData = async () => {
   return { ...platformInfo, uaFullVersion }
 }
 
+export const getStoredConfig = async () => {
+  const store = await new Promise(resolve => chrome.storage.local.get(resolve))
+  const migrated = migrateStoredConfig(store)
+
+  if ((store.schemaVersion || 0) < CURRENT_SCHEMA_VERSION) {
+    await chrome.storage.local.set(migrated)
+  }
+
+  return migrated
+}
+
 export const getConfig = async () => {
   const [{ arch, os, uaFullVersion }, extensions, self, store] =
     await Promise.all([
       getUserAgentData(),
       getInstalledExtensions(),
       getSelf(),
-      new Promise(resolve => chrome.storage.local.get(resolve))
+      getStoredConfig()
     ])
 
   return {

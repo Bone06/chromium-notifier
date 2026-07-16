@@ -3,14 +3,17 @@ import test from 'node:test'
 
 import {
   compareVersions,
+  CURRENT_SCHEMA_VERSION,
   createExtensionUpdateBatches,
   createExtensionUpdateUrl,
+  extractChromiumVersion,
   filterRelevantExtensions,
   getDefaultBadgeColors,
   getBadgePresentation,
   getBadgeStatus,
   getBuildSelectionStatus,
   getChromiumVersionStatus,
+  getChromiumVersionFromUserAgentData,
   getExtensionDownloadUrl,
   getExtensionCapabilities,
   getInstallTypeLabel,
@@ -19,6 +22,7 @@ import {
   hasExtensionUpdate,
   mapPlatformToArch,
   matchExtension,
+  migrateStoredConfig,
   parseUpdateManifest,
   validateWoolyssResponse
 } from '../js/core.js'
@@ -82,6 +86,46 @@ test('compareVersions compares dotted numeric versions', () => {
   assert.equal(compareVersions('120.0.1', '120.0.1.0'), 0)
   assert.ok(compareVersions('120.0.10', '120.0.2') > 0)
   assert.ok(compareVersions('119.9', '120.0') < 0)
+})
+
+test('extractChromiumVersion accepts full and major-only user agents', () => {
+  assert.equal(
+    extractChromiumVersion('Mozilla/5.0 Chromium/150.0.7871.125 Safari/537.36'),
+    '150.0.7871.125'
+  )
+  assert.equal(extractChromiumVersion('Custom Chrome/150'), '150')
+  assert.equal(extractChromiumVersion('Custom Browser/150.0'), undefined)
+})
+
+test('getChromiumVersionFromUserAgentData prefers Chromium full versions', () => {
+  assert.equal(
+    getChromiumVersionFromUserAgentData({
+      brands: [{ brand: 'Chromium', version: '150' }],
+      fullVersionList: [
+        { brand: 'Google Chrome', version: '150.0.0.1' },
+        { brand: 'Chromium', version: '150.0.0.2' }
+      ],
+      uaFullVersion: '150.0.0.3'
+    }),
+    '150.0.0.2'
+  )
+})
+
+test('getChromiumVersionFromUserAgentData uses safe fallbacks', () => {
+  assert.equal(
+    getChromiumVersionFromUserAgentData({ uaFullVersion: '151.0.0.1' }),
+    '151.0.0.1'
+  )
+  assert.equal(
+    getChromiumVersionFromUserAgentData({
+      brands: [{ brand: 'Chromium', version: '152' }]
+    }),
+    '152'
+  )
+  assert.equal(
+    getChromiumVersionFromUserAgentData({ uaFullVersion: 'invalid' }),
+    undefined
+  )
 })
 
 test('getChromiumVersionStatus identifies update direction', () => {
@@ -229,6 +273,52 @@ test('Woolyss state transitions track attempts and preserve cached data', () => 
       .woolyssDataStale,
     false
   )
+})
+
+test('migrateStoredConfig upgrades legacy successful state', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 1)
+  assert.deepEqual(
+    migrateStoredConfig({
+      arch: 'win64',
+      timestamp: 1000,
+      versions: woolyssResponse
+    }),
+    {
+      arch: 'win64',
+      error: null,
+      lastAttemptAt: 1000,
+      lastSuccessAt: 1000,
+      schemaVersion: 1,
+      timestamp: 1000,
+      versions: woolyssResponse
+    }
+  )
+})
+
+test('migrateStoredConfig preserves legacy error and cached data semantics', () => {
+  assert.deepEqual(
+    migrateStoredConfig({
+      error: 'offline',
+      timestamp: 2000,
+      versions: woolyssResponse
+    }),
+    {
+      error: null,
+      lastAttemptAt: 2000,
+      schemaVersion: 1,
+      timestamp: 2000,
+      versions: woolyssResponse,
+      woolyssDataStale: true,
+      woolyssError: 'offline'
+    }
+  )
+})
+
+test('migrateStoredConfig is idempotent and preserves future schemas', () => {
+  const current = { custom: true, schemaVersion: 1 }
+  const future = { custom: true, schemaVersion: 2 }
+  assert.deepEqual(migrateStoredConfig(current), current)
+  assert.deepEqual(migrateStoredConfig(future), future)
 })
 
 test('matchExtension only matches an extension with the same id and a version', () => {
@@ -416,6 +506,15 @@ test('createExtensionUpdateUrl preserves query parameters and appends ids', () =
   assert.deepEqual(url.searchParams.getAll('x'), ['id=one&uc', 'id=two&uc'])
 })
 
+test('createExtensionUpdateUrl omits an unavailable browser version', () => {
+  const url = createExtensionUpdateUrl(
+    'https://example.test/update',
+    ['one'],
+    undefined
+  )
+  assert.equal(url.searchParams.has('prodversion'), false)
+})
+
 test('createExtensionUpdateBatches respects the URL length limit', () => {
   const ids = Array.from({ length: 20 }, (_, index) =>
     `extension-${index.toString().padStart(2, '0')}`
@@ -472,6 +571,10 @@ test('getExtensionDownloadUrl leaves non-Google codebase URLs unchanged', () => 
 test('mapPlatformToArch maps supported platforms', () => {
   assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'win' }), 'win64')
   assert.equal(mapPlatformToArch({ arch: 'x86-32', os: 'win' }), 'win32')
+  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'win' }), 'win64')
   assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'mac' }), 'mac')
-  assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'linux' }), undefined)
+  assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'linux' }), 'linux')
+  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'linux' }), 'linux')
+  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'android' }), 'android')
+  assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'cros' }), undefined)
 })
