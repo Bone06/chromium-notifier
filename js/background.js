@@ -3,7 +3,10 @@ import {
   getExtensionsInfo,
   getUserAgentData,
 } from './utils.js'
-import { hasExtensionUpdate } from './core.js'
+import {
+  getChromiumVersionStatus,
+  hasExtensionUpdate
+} from './core.js'
 
 const ALARM_NAME = 'main'
 let currentUpdate
@@ -131,7 +134,10 @@ chrome.storage.onChanged.addListener(async () => {
 
   chrome.action.setBadgeText({
     text:
-      (current && uaFullVersion !== current.version) || extensionsNew
+      (current &&
+        getChromiumVersionStatus(uaFullVersion, current.version) ===
+          'update-available') ||
+      extensionsNew
         ? 'New'
         : ''
   })
@@ -149,6 +155,20 @@ chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === ALARM_NAME) {
     main(alarm.name)
   }
+})
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== 'check-now') {
+    return false
+  }
+
+  main('manual')
+    .then(() => sendResponse({ ok: true }))
+    .catch(error => sendResponse({
+      error: error.message || String(error),
+      ok: false
+    }))
+  return true
 })
 
 chrome.runtime.onStartup.addListener(main)

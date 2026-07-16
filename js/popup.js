@@ -7,6 +7,7 @@ import {
 } from './utils.js'
 import {
   getExtensionDownloadUrl,
+  getChromiumVersionStatus,
   hasExtensionUpdate,
   matchExtension
 } from './core.js'
@@ -50,15 +51,34 @@ const removeExt = e => chrome.management.uninstall(e.currentTarget.id)
  * Components
  */
 
-const ChromiumInfo = ({ arch, current = {}, currentVersion, tag }) => html`
-  <details open="${current.version && current.version !== currentVersion}">
+const ChromiumInfo = ({
+  arch,
+  checking,
+  current = {},
+  currentVersion,
+  onCheckNow,
+  tag
+}) => {
+  const versionStatus = getChromiumVersionStatus(
+    currentVersion,
+    current.version
+  )
+
+  return html`
+  <details open="${versionStatus === 'update-available'}">
     <summary>Chromium <code>v${currentVersion}</code></summary>
     <ul>
       <li>
-          <span>Available: </span>
-        <code class="${current.version !== currentVersion && 'badge'}"
+        <span>Available: </span>
+        <code class="${versionStatus === 'update-available' && 'badge'}"
           >v${current.version}</code
         >
+        <button
+          class="check-now"
+          disabled="${checking}"
+          onClick="${onCheckNow}"
+          type="button"
+        >${checking ? 'Checking…' : 'Check now'}</button>
       </li>
       <li>
         <span>Revision: ${current.revision} </span>
@@ -78,6 +98,18 @@ const ChromiumInfo = ({ arch, current = {}, currentVersion, tag }) => html`
         `}
     </ul>
     <div style="font-size: smaller; margin-top: 1em">
+      ${versionStatus === 'local-newer' &&
+        html`
+          <p style="margin: 0 0 0.5rem; white-space: normal;">
+            The installed Chromium version is newer than this build.
+          </p>
+        `}
+      ${versionStatus === 'unknown' &&
+        html`
+          <p style="color: #b00020; margin: 0 0 0.5rem; white-space: normal;">
+            Chromium versions could not be compared.
+          </p>
+        `}
       <span>Tracking </span>
       <a href="https://chromium.woolyss.com/#${arch}-${tag}" target="_blank"
         >${arch}-${tag}</a
@@ -85,6 +117,7 @@ const ChromiumInfo = ({ arch, current = {}, currentVersion, tag }) => html`
     </div>
   </details>
 `
+}
 
 const ExtensionsInfo = ({
   currentVersion,
@@ -328,12 +361,23 @@ const Settings = ({
 
 class App extends Component {
   state = {
+    checking: false,
     extensions: [],
     extensionsErrors: [],
     extensionsInfo: [],
     extensionsUpdateSummary: {},
     self: {},
     versions: {}
+  }
+
+  onCheckNow = () => {
+    this.setState({ checking: true })
+    chrome.runtime.sendMessage({ type: 'check-now' }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError)
+      }
+      this.setState({ checking: false })
+    })
   }
 
   onDisableExtension = ({ target: { checked, id } }) => {
@@ -368,6 +412,7 @@ class App extends Component {
     props,
     {
       arch,
+      checking,
       currentVersion,
       error,
       extensions,
@@ -394,8 +439,10 @@ class App extends Component {
           <${Section}>
             <${ChromiumInfo}
               arch="${arch}"
+              checking="${checking}"
               current="${current}"
               currentVersion="${currentVersion}"
+              onCheckNow="${this.onCheckNow}"
               tag="${tag}"
             />
           <//>

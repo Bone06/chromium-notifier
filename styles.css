@@ -85,6 +85,16 @@ ul.extensions li:hover button.remove {
   visibility: visible;
 }
 
+button.check-now {
+  background: none;
+  border: 0;
+  color: #3367d6;
+  cursor: pointer;
+  font: inherit;
+  margin-left: 2rem;
+  padding: 0;
+}
+
 .badge {
   background-color: orangered;
   border-radius: 4px;

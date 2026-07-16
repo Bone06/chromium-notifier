@@ -6,6 +6,7 @@ import {
   createExtensionUpdateBatches,
   createExtensionUpdateUrl,
   getExtensionDownloadUrl,
+  getChromiumVersionStatus,
   hasExtensionUpdate,
   mapPlatformToArch,
   matchExtension,
@@ -61,6 +62,27 @@ test('compareVersions compares dotted numeric versions', () => {
   assert.equal(compareVersions('120.0.1', '120.0.1.0'), 0)
   assert.ok(compareVersions('120.0.10', '120.0.2') > 0)
   assert.ok(compareVersions('119.9', '120.0') < 0)
+})
+
+test('getChromiumVersionStatus identifies update direction', () => {
+  assert.equal(
+    getChromiumVersionStatus('150.0.7871.100', '150.0.7871.125'),
+    'update-available'
+  )
+  assert.equal(
+    getChromiumVersionStatus('150.0.7871.125', '150.0.7871.125'),
+    'current'
+  )
+  assert.equal(
+    getChromiumVersionStatus('151.0.7900.10', '150.0.7871.125'),
+    'local-newer'
+  )
+})
+
+test('getChromiumVersionStatus rejects missing or malformed versions', () => {
+  assert.equal(getChromiumVersionStatus(undefined, '150.0.0.0'), 'unknown')
+  assert.equal(getChromiumVersionStatus('150.0.0.0', undefined), 'unknown')
+  assert.equal(getChromiumVersionStatus('Chromium 150', '150.0.0.0'), 'unknown')
 })
 
 test('matchExtension only matches an extension with the same id and a version', () => {

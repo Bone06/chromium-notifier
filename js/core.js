@@ -118,6 +118,23 @@ export const compareVersions = (left = '', right = '') => {
   return 0
 }
 
+export const getChromiumVersionStatus = (currentVersion, availableVersion) => {
+  const validVersion = /^\d+(?:\.\d+)*$/
+  if (
+    !validVersion.test(currentVersion || '') ||
+    !validVersion.test(availableVersion || '')
+  ) {
+    return 'unknown'
+  }
+
+  const comparison = compareVersions(availableVersion, currentVersion)
+  return comparison > 0
+    ? 'update-available'
+    : comparison < 0
+    ? 'local-newer'
+    : 'current'
+}
+
 export const hasExtensionUpdate = (extension, info) =>
   Boolean(
     info &&
