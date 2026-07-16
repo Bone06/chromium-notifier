@@ -515,6 +515,13 @@ test('createExtensionUpdateUrl omits an unavailable browser version', () => {
   assert.equal(url.searchParams.has('prodversion'), false)
 })
 
+test('createExtensionUpdateUrl rejects non-HTTP update servers', () => {
+  assert.throws(
+    () => createExtensionUpdateUrl('file:///tmp/update.xml', ['one']),
+    /Invalid extension update URL/
+  )
+})
+
 test('createExtensionUpdateBatches respects the URL length limit', () => {
   const ids = Array.from({ length: 20 }, (_, index) =>
     `extension-${index.toString().padStart(2, '0')}`
@@ -565,6 +572,20 @@ test('getExtensionDownloadUrl leaves non-Google codebase URLs unchanged', () => 
   assert.equal(
     getExtensionDownloadUrl({ codebase, updateUrl: 'https://example.test' }),
     codebase
+  )
+})
+
+test('getExtensionDownloadUrl rejects unsafe URLs and checks exact hostnames', () => {
+  assert.equal(
+    getExtensionDownloadUrl({ codebase: 'javascript:alert(1)' }),
+    null
+  )
+
+  const deceptive =
+    'https://example.test/clients2.googleusercontent.com/extension.crx'
+  assert.equal(
+    getExtensionDownloadUrl({ codebase: deceptive }),
+    deceptive
   )
 })
 

@@ -21,13 +21,13 @@ test('theme bootstrap applies stored and changed theme modes', async t => {
   })
 
   await import('../js/theme.js')
-  assert.equal(document.documentElement.dataset.theme, 'dark')
+  assert.equal(globalThis.document.documentElement.dataset.theme, 'dark')
 
   listeners[0]({ themeMode: { newValue: 'light' } }, 'local')
-  assert.equal(document.documentElement.dataset.theme, 'light')
+  assert.equal(globalThis.document.documentElement.dataset.theme, 'light')
 
   listeners[0]({ themeMode: { newValue: 'invalid' } }, 'local')
-  assert.equal(document.documentElement.dataset.theme, 'browser')
+  assert.equal(globalThis.document.documentElement.dataset.theme, 'browser')
 })
 
 test('popup exposes all theme modes and browser-default CSS', async () => {

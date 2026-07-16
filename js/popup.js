@@ -167,6 +167,9 @@ const ExtensionRow = ({
   pending
 }) => {
   const { canRemove, canToggle } = getExtensionCapabilities(extension)
+  const downloadUrl = info
+    ? getExtensionDownloadUrl(info, currentVersion)
+    : null
   const installTypeLabel = getInstallTypeLabel(extension.installType)
   const toggleTitle = !canToggle
     ? extension.enabled
@@ -198,11 +201,11 @@ const ExtensionRow = ({
         <code>
           <span>v${extension.version} </span>
           ${hasExtensionUpdate(extension, info) &&
-            info.codebase &&
+            downloadUrl &&
             html`
               <a
                 class="badge"
-                href="${getExtensionDownloadUrl(info, currentVersion)}"
+                href="${downloadUrl}"
                 target="_blank"
               >v${info.version}</a>
             `}
@@ -230,6 +233,7 @@ const ExtensionsInfo = ({
   currentVersion,
   extensions = [],
   extensionsErrors = [],
+  extensionsGeneralError,
   extensionsInfo = [],
   extensionsUpdateSummary = {},
   managementError,
@@ -259,6 +263,12 @@ const ExtensionsInfo = ({
         html`
           <p aria-live="polite" class="management-error">
             ${managementError}
+          </p>
+        `}
+      ${extensionsGeneralError &&
+        html`
+          <p class="management-error">
+            Extension update check failed: ${extensionsGeneralError}
           </p>
         `}
       <ul class="extensions">
@@ -472,7 +482,7 @@ const Settings = ({
             style="margin: 0 0.25rem 0 0"
             type="checkbox"
           />
-          Use custom colors
+          Use custom badge colors
         </label>
       </p>
 
@@ -512,6 +522,7 @@ class App extends Component {
     badgeColors: {},
     extensions: [],
     extensionsErrors: [],
+    extensionsGeneralError: null,
     extensionsInfo: [],
     extensionsUpdateSummary: {},
     managementError: null,
@@ -609,7 +620,7 @@ class App extends Component {
   }
 
   render (
-    props,
+    _props,
     {
       arch,
       badgeColors,
@@ -617,6 +628,7 @@ class App extends Component {
       currentVersion,
       extensions,
       extensionsErrors,
+      extensionsGeneralError,
       extensionsInfo,
       extensionsTrack,
       extensionsUpdateSummary,
@@ -666,6 +678,7 @@ class App extends Component {
               currentVersion="${currentVersion}"
               extensions="${extensions}"
               extensionsErrors="${extensionsErrors}"
+              extensionsGeneralError="${extensionsGeneralError}"
               extensionsInfo="${extensionsInfo}"
               extensionsUpdateSummary="${extensionsUpdateSummary}"
               managementError="${managementError}"
