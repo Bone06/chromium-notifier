@@ -162,3 +162,20 @@ export const hasExtensionUpdate = (extension, info) =>
       info.version &&
       compareVersions(info.version, extension.version) > 0
   )
+
+export const shouldShowNewBadge = ({
+  availableVersion,
+  currentVersion,
+  extensions = [],
+  extensionsInfo = [],
+  extensionsTrack = false
+}) =>
+  getChromiumVersionStatus(currentVersion, availableVersion) ===
+    'update-available' ||
+  (extensionsTrack &&
+    extensions.some(extension =>
+      hasExtensionUpdate(
+        extension,
+        extensionsInfo.find(({ id }) => id === extension.id)
+      )
+    ))

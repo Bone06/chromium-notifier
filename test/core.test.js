@@ -5,13 +5,14 @@ import {
   compareVersions,
   createExtensionUpdateBatches,
   createExtensionUpdateUrl,
-  getExtensionDownloadUrl,
   getBuildSelectionStatus,
   getChromiumVersionStatus,
+  getExtensionDownloadUrl,
   hasExtensionUpdate,
   mapPlatformToArch,
   matchExtension,
-  parseUpdateManifest
+  parseUpdateManifest,
+  shouldShowNewBadge
 } from '../js/core.js'
 
 test('parseUpdateManifest parses apps, update data and XML entities', () => {
@@ -134,6 +135,43 @@ test('hasExtensionUpdate only accepts a newer version for the same extension', (
       id: 'one',
       status: 'noupdate',
       version: '9.0.0'
+    }),
+    false
+  )
+})
+
+test('shouldShowNewBadge ignores stale extension updates when tracking is disabled', () => {
+  const state = {
+    availableVersion: '150.0.0.0',
+    currentVersion: '150.0.0.0',
+    extensions: [{ id: 'one', version: '1.0.0' }],
+    extensionsInfo: [{ id: 'one', version: '2.0.0' }],
+    extensionsTrack: false
+  }
+
+  assert.equal(shouldShowNewBadge(state), false)
+  assert.equal(shouldShowNewBadge({ ...state, extensionsTrack: true }), true)
+})
+
+test('shouldShowNewBadge only reports a newer remote Chromium version', () => {
+  assert.equal(
+    shouldShowNewBadge({
+      availableVersion: '150.0.0.1',
+      currentVersion: '150.0.0.0'
+    }),
+    true
+  )
+  assert.equal(
+    shouldShowNewBadge({
+      availableVersion: '150.0.0.0',
+      currentVersion: '150.0.0.0'
+    }),
+    false
+  )
+  assert.equal(
+    shouldShowNewBadge({
+      availableVersion: '149.0.0.0',
+      currentVersion: '150.0.0.0'
     }),
     false
   )

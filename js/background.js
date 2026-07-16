@@ -3,10 +3,7 @@ import {
   getExtensionsInfo,
   getUserAgentData,
 } from './utils.js'
-import {
-  getChromiumVersionStatus,
-  hasExtensionUpdate
-} from './core.js'
+import { shouldShowNewBadge } from './core.js'
 
 const ALARM_NAME = 'main'
 let currentUpdate
@@ -113,6 +110,7 @@ chrome.storage.onChanged.addListener(async () => {
     error,
     extensions,
     extensionsInfo = [],
+    extensionsTrack,
     tag,
     versions
   } = await getConfig()
@@ -123,23 +121,16 @@ chrome.storage.onChanged.addListener(async () => {
     versions[arch] &&
     versions[arch].find(v => v.tag === tag)
 
-  const extensionsNew = extensions.some(extension =>
-    hasExtensionUpdate(
-      extension,
-      extensionsInfo.find(({ id }) => id === extension.id)
-    )
-  )
-
   const { uaFullVersion } = await getUserAgentData()
 
   chrome.action.setBadgeText({
-    text:
-      (current &&
-        getChromiumVersionStatus(uaFullVersion, current.version) ===
-          'update-available') ||
-      extensionsNew
-        ? 'New'
-        : ''
+    text: shouldShowNewBadge({
+      availableVersion: current?.version,
+      currentVersion: uaFullVersion,
+      extensions,
+      extensionsInfo,
+      extensionsTrack
+    }) ? 'New' : ''
   })
 
   if (error) {
