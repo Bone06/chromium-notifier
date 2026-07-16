@@ -60,6 +60,9 @@ const changePlatform = e =>
 
 const changeTag = e => chrome.storage.local.set({ tag: e.target.value })
 
+const changeTheme = e =>
+  chrome.storage.local.set({ themeMode: e.target.value })
+
 /*
  * Components
  */
@@ -135,7 +138,7 @@ const ChromiumInfo = ({
         `}
       ${versionStatus === 'unknown' &&
         html`
-          <p style="color: #b00020; margin: 0 0 0.5rem; white-space: normal;">
+          <p class="compact-message error-text">
             Chromium versions could not be compared.
           </p>
         `}
@@ -295,7 +298,7 @@ const ExtensionsInfo = ({
       ${extensionsErrors.length > 0 &&
         html`
           <div style="display: block; margin-top: 0.75rem; white-space: normal;">
-            <small style="color: #b00020;">
+            <small class="error-text">
               Update information partially or fully unavailable from
               ${extensionsUpdateSummary.failed || extensionsErrors.length} of
               ${extensionsUpdateSummary.total || extensionsErrors.length}
@@ -324,7 +327,7 @@ const ExtensionsInfo = ({
 const Header = ({ version }) => html`
   <div>
     <div>
-      <p style="color: #202124; margin: 0">
+      <p class="header-title">
         <strong>Chromium Update Notifications </strong>
         <code>${version && `v${version}`}</code>
       </p>
@@ -351,7 +354,7 @@ class Section extends Component {
       <section>
         ${errorMsg
           ? html`
-              <small style="color: red">${errorMsg}</small>
+              <small class="error-text">${errorMsg}</small>
             `
           : children}
       </section>
@@ -365,6 +368,7 @@ const Settings = ({
   extensionsTrack,
   selectionStatus,
   tag,
+  themeMode = 'browser',
   useCustomColors,
   versions
 }) => html`
@@ -443,6 +447,21 @@ const Settings = ({
           Track extension updates
         </label>
       </p>
+
+      <label class="theme-setting">
+        <p>Theme</p>
+        <select onChange="${changeTheme}">
+          <option selected="${themeMode === 'browser'}" value="browser"
+            >Browser default</option
+          >
+          <option selected="${themeMode === 'light'}" value="light"
+            >Light</option
+          >
+          <option selected="${themeMode === 'dark'}" value="dark"
+            >Dark</option
+          >
+        </select>
+      </label>
 
       <p style="margin: 0;">
         <label>
@@ -608,6 +627,7 @@ class App extends Component {
       pendingExtensionIds,
       self,
       tag,
+      themeMode,
       useCustomColors,
       versions,
       woolyssDataStale,
@@ -663,6 +683,7 @@ class App extends Component {
           extensionsTrack="${extensionsTrack}"
           selectionStatus="${selectionStatus}"
           tag="${tag}"
+          themeMode="${themeMode}"
           useCustomColors="${useCustomColors}"
           versions="${versions}"
         />
@@ -682,7 +703,7 @@ class App extends Component {
           `}
         ${woolyssError &&
           html`
-            <small style="color: red; margin-top: 0.5rem;">
+            <small class="error-text last-error">
               Last error${lastErrorAt
                 ? ` (${new Date(lastErrorAt).toLocaleString()})`
                 : ''}: ${woolyssError}

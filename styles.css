@@ -1,15 +1,60 @@
+:root {
+  --background: #ffffff;
+  --border: #dadce0;
+  --control-background: #ffffff;
+  --error: #b00020;
+  --icon-filter: none;
+  --install-type-background: #e8eaed;
+  --install-type-text: #3c4043;
+  --link: #3367d6;
+  --strong-text: #202124;
+  --text: #5f6368;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --background: #202124;
+  --border: #5f6368;
+  --control-background: #292a2d;
+  --error: #f28b82;
+  --icon-filter: invert(1);
+  --install-type-background: #3c4043;
+  --install-type-text: #e8eaed;
+  --link: #8ab4f8;
+  --strong-text: #f1f3f4;
+  --text: #bdc1c6;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="browser"] {
+    --background: #202124;
+    --border: #5f6368;
+    --control-background: #292a2d;
+    --error: #f28b82;
+    --icon-filter: invert(1);
+    --install-type-background: #3c4043;
+    --install-type-text: #e8eaed;
+    --link: #8ab4f8;
+    --strong-text: #f1f3f4;
+    --text: #bdc1c6;
+    color-scheme: dark;
+  }
+}
+
 *:disabled,
 .disabled {
   opacity: 0.5;
 }
 
 a {
-  color: #3367d6;
+  color: var(--link);
   text-decoration: none;
 }
 
 body {
-  color: #5f6368;
+  background: var(--background);
+  color: var(--text);
   font-size: 13px;
   margin: 0;
   min-width: 360px;
@@ -25,9 +70,9 @@ label > p {
 }
 
 label > select {
-  background-color: white;
-  border: 1px solid #dadce0;
-  color: #3367d6;
+  background-color: var(--control-background);
+  border: 1px solid var(--border);
+  color: var(--link);
   display: block;
   font-weight: bold;
   height: 2em;
@@ -37,7 +82,7 @@ label > select {
 }
 
 section {
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--border);
   padding: 1rem;
 }
 
@@ -60,21 +105,21 @@ summary {
 }
 
 .setting-warning {
-  color: #b00020;
+  color: var(--error);
   margin: 0 0 0.75rem;
   white-space: normal;
 }
 
 .management-error {
-  color: #b00020;
+  color: var(--error);
   margin: 0.75rem 0 0;
   white-space: normal;
 }
 
 .install-type {
-  background: #e8eaed;
+  background: var(--install-type-background);
   border-radius: 4px;
-  color: #3c4043;
+  color: var(--install-type-text);
   font-size: 0.75rem;
   margin-left: 0.4rem;
   padding: 0.1rem 0.3rem;
@@ -135,7 +180,7 @@ ul.extensions li button.remove:disabled {
 button.check-now {
   background: none;
   border: 0;
-  color: #3367d6;
+  color: var(--link);
   cursor: pointer;
   font: inherit;
   margin-left: 2rem;
@@ -148,4 +193,31 @@ button.check-now {
   color: white;
   margin-right: 0.5em;
   padding: 0 0.25em;
+}
+
+.compact-message {
+  margin: 0 0 0.5rem;
+  white-space: normal;
+}
+
+.error-text {
+  color: var(--error);
+}
+
+.header-title {
+  color: var(--strong-text);
+  margin: 0;
+}
+
+.header-cell img {
+  filter: var(--icon-filter);
+}
+
+.last-error {
+  margin-top: 0.5rem;
+}
+
+.theme-setting {
+  display: block;
+  margin: 0.75rem 0;
 }
