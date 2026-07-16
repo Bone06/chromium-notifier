@@ -1,35 +1,70 @@
-const parser = new DOMParser()
-
 const addIfNew = (arr = [], item) =>
   item === undefined ? arr : [...new Set([...arr]).add(item)]
 
-export const clearError = () =>
-  new Promise(resolve =>
-    chrome.browserAction.setBadgeText({ text: '' }, () =>
-      chrome.browserAction.setBadgeBackgroundColor(
-        { color: [0, 150, 180, 255] },
-        () => chrome.storage.local.set({ error: null }, () => resolve())
-      )
+const decodeXml = value =>
+  value.replace(/&(amp|lt|gt|quot|apos);/g, (_, entity) => ({
+    amp: '&',
+    lt: '<',
+    gt: '>',
+    quot: '"',
+    apos: "'"
+  })[entity])
+
+const getAttributes = source =>
+  Array.from(source.matchAll(/([\w:-]+)\s*=\s*(["'])(.*?)\2/gs)).reduce(
+    (attributes, [, name, , value]) => ({
+      ...attributes,
+      [name]: decodeXml(value)
+    }),
+    {}
+  )
+
+const parseUpdateManifest = text => {
+  if (/<(?:[\w-]+:)?parsererror\b/i.test(text)) {
+    throw new Error('Invalid extension update manifest')
+  }
+
+  const apps = Array.from(
+    text.matchAll(
+      /<(?:[\w-]+:)?app\b([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?app\s*>/gi
     )
   )
+
+  if (!apps.length && !/<(?:[\w-]+:)?gupdate\b/i.test(text)) {
+    throw new Error('Invalid extension update manifest')
+  }
+
+  return apps.map(([, appAttributes, contents]) => {
+    const updateCheck = contents.match(
+      /<(?:[\w-]+:)?updatecheck\b([^>]*)\/?\s*>/i
+    )
+
+    return {
+      app: getAttributes(appAttributes),
+      updatecheck: updateCheck ? getAttributes(updateCheck[1]) : null
+    }
+  })
+}
 
 export const getSelf = () =>
   new Promise(resolve => chrome.management.get(chrome.runtime.id, resolve))
 
 const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
-  const x = ids.map(id => `x=${encodeURIComponent(`id=${id}&uc`)}`).join('&')
+  const url = new URL(updateUrl)
+  url.searchParams.set('acceptformat', 'crx2,crx3')
+  url.searchParams.set('prodversion', prodversion)
+  ids.forEach(id => url.searchParams.append('x', `id=${id}&uc`))
 
-  const txt = await fetch(
-    `${updateUrl}?acceptformat=crx2,crx3&prodversion=${prodversion}&${x}`
-  ).then(req => req.text())
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Extension update request failed (${response.status})`)
+  }
 
-  const xml = parser.parseFromString(txt, 'text/xml')
+  const apps = parseUpdateManifest(await response.text())
 
-  return Array.from(xml.querySelectorAll('app')).map(el => {
-    const updatecheck = el.querySelector('updatecheck')
-
+  return apps.map(({ app, updatecheck }) => {
     const info = {
-      id: el.getAttribute('appid'),
+      id: app.appid,
       prodversion,
       timestamp: new Date().getTime(),
       updateUrl
@@ -38,13 +73,7 @@ const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
     return updatecheck
       ? {
           ...info,
-          ...updatecheck.getAttributeNames().reduce(
-            (acc, attr) => ({
-              ...acc,
-              [attr]: updatecheck.getAttribute(attr)
-            }),
-            {}
-          )
+          ...updatecheck
         }
       : info
   })
@@ -73,39 +102,48 @@ const fetchExtensionsInfo = async (extensions, prodversion) => {
 }
 
 export const getUserAgentData = async () => {
-  if (navigator.userAgentData) {
-    const data = await navigator.userAgentData.getHighEntropyValues([
-      'platform',
-      'uaFullVersion'
-    ])
-    return data
+  let uaFullVersion
+
+  if (navigator.userAgentData?.getHighEntropyValues) {
+    try {
+      const data = await navigator.userAgentData.getHighEntropyValues([
+        'fullVersionList',
+        'uaFullVersion'
+      ])
+      const chromium = data.fullVersionList?.find(({ brand }) =>
+        /Chromium|Chrome/i.test(brand)
+      )
+      uaFullVersion = chromium?.version || data.uaFullVersion
+    } catch (error) {
+      console.debug('User-Agent Client Hints unavailable', error)
+    }
   }
 
-  const uaFullVersion = navigator.userAgent.match(
-    /Chrome\/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)/
-  )[1]
+  if (!uaFullVersion) {
+    uaFullVersion = navigator.userAgent.match(
+      /(?:Chrome|Chromium)\/([0-9]+(?:\.[0-9]+){1,3})/
+    )?.[1]
+  }
 
-  const platform = navigator.userAgent.includes('Macintosh')
-    ? 'macOS'
-    : navigator.userAgent.includes('Win64')
-    ? 'Windows'
-    : navigator.userAgent.includes('Windows')
-    ? 'Windows'
-    : undefined
+  const platformInfo = await new Promise(resolve =>
+    chrome.runtime.getPlatformInfo(resolve)
+  )
 
-  return { platform, uaFullVersion }
+  return { ...platformInfo, uaFullVersion }
 }
 
 export const getConfig = () =>
   new Promise(resolve =>
-    getUserAgentData().then(({ platform, uaFullVersion }) => {
+    getUserAgentData().then(({ arch: cpuArch, os, uaFullVersion }) => {
       chrome.management.getAll(extensions =>
         chrome.storage.local.get(store => {
           if (!store.arch) {
-            store.arch = platform.includes('Macintosh')
+            store.arch = os === 'mac'
               ? 'mac'
-              : platform.includes('Win64')
+              : os === 'win' && cpuArch === 'x86-64'
               ? 'win64'
+              : os === 'win'
+              ? 'win32'
               : undefined
           }
           getSelf().then(self =>
@@ -122,7 +160,6 @@ export const getConfig = () =>
   )
 
 export const getExtensionsInfo = async currentVersion => {
-  await clearError()
   const extensions = await new Promise(resolve =>
     chrome.management.getAll(exts =>
       resolve(
@@ -138,18 +175,28 @@ export const getExtensionsInfo = async currentVersion => {
 }
 
 export const matchExtension = ext => ({ id, updateUrl, version }) => {
-  if (!version) {
-    return false
-  }
-
-  if (id === ext.id) {
-    return true
-  }
-
-  if (
-    updateUrl !== 'https://clients2.google.com/service/update2/crx' &&
-    updateUrl === ext.updateUrl
-  ) {
-    return true
-  }
+  return Boolean(version && id === ext.id)
 }
+
+const compareVersions = (left = '', right = '') => {
+  const a = left.split('.').map(part => Number(part) || 0)
+  const b = right.split('.').map(part => Number(part) || 0)
+  const length = Math.max(a.length, b.length)
+
+  for (let i = 0; i < length; i += 1) {
+    if ((a[i] || 0) !== (b[i] || 0)) {
+      return (a[i] || 0) - (b[i] || 0)
+    }
+  }
+
+  return 0
+}
+
+export const hasExtensionUpdate = (extension, info) =>
+  Boolean(
+    info &&
+      info.id === extension.id &&
+      info.status !== 'noupdate' &&
+      info.version &&
+      compareVersions(info.version, extension.version) > 0
+  )

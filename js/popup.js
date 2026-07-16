@@ -1,10 +1,10 @@
 import { Component, h, render } from './vendor/preact-10.0.1.js'
 import htm from './vendor/htm-2.2.1.js'
 import {
-  clearError,
   getConfig,
   getExtensionsInfo,
   getUserAgentData,
+  hasExtensionUpdate,
   matchExtension,
 } from './utils.js'
 
@@ -41,18 +41,31 @@ const changePlatform = e =>
 
 const changeTag = e => chrome.storage.local.set({ tag: e.target.value })
 
-const removeExt = e => chrome.management.uninstall(e.target.id)
+const removeExt = e => chrome.management.uninstall(e.currentTarget.id)
+
+const getDownloadUrl = (info, currentVersion) => {
+  if (!info.codebase.includes('clients2.googleusercontent.com')) {
+    return info.codebase
+  }
+
+  const url = new URL(info.updateUrl)
+  url.searchParams.set('response', 'redirect')
+  url.searchParams.set('acceptformat', 'crx2,crx3')
+  url.searchParams.set('prodversion', currentVersion)
+  url.searchParams.set('x', `id=${info.id}&installsource=ondemand&uc`)
+  return url.href
+}
 
 /*
  * Components
  */
 
 const ChromiumInfo = ({ arch, current = {}, currentVersion, tag }) => html`
-  <details open="${current.version !== currentVersion}">
+  <details open="${current.version && current.version !== currentVersion}">
     <summary>Chromium <code>v${currentVersion}</code></summary>
     <ul>
       <li>
-        <span>Current: </span>
+          <span>Available: </span>
         <code class="${current.version !== currentVersion && 'badge'}"
           >v${current.version}</code
         >
@@ -99,8 +112,11 @@ const ExtensionsInfo = ({
 
   return html`
     <details
-      open="${!extensionsInfo.every(e =>
-        extensions.find(({ version }) => version === e.version)
+      open="${extensions.some(extension =>
+        hasExtensionUpdate(
+          extension,
+          extensionsInfo.find(({ id }) => id === extension.id)
+        )
       )}"
     >
       <summary>${extensions.length} Extensions</summary>
@@ -126,16 +142,12 @@ const ExtensionsInfo = ({
                     `
                   : `${ext.name} `}
                 <code
-                  ><span>v${ext.version} </span> ${info.status !== 'noupdate' &&
-                    info.version !== ext.version &&
+                  ><span>v${ext.version} </span> ${hasExtensionUpdate(ext, info) &&
+                    info.codebase &&
                     html`
                       <a
                         class="badge"
-                        href="${info.codebase.includes(
-                          'clients2.googleusercontent.com'
-                        )
-                          ? `${info.updateUrl}?response=redirect&acceptformat=crx2,crx3&prodversion=${currentVersion}&x=id%3D${info.id}%26installsource%3Dondemand%26uc`
-                          : info.codebase}"
+                        href="${getDownloadUrl(info, currentVersion)}"
                         target="_blank"
                         >v${info.version}</a
                       >
@@ -235,7 +247,6 @@ class Section extends Component {
 
 const Settings = ({
   arch,
-  errorTracking,
   extensionsTrack,
   tag,
   versions
@@ -290,18 +301,6 @@ const Settings = ({
         </label>
       </p>
 
-      <p style="margin: 0;">
-        <label>
-          <input
-            checked="${errorTracking || errorTracking === undefined}"
-            name="errorTracking"
-            onChange="${changeBoolSetting}"
-            style="margin: 0 0.25rem 0 0"
-            type="checkbox"
-          />
-          Enable error tracking
-        </label>
-      </p>
     </div>
   </details>
 `
@@ -337,7 +336,6 @@ class App extends Component {
   }
 
   async componentDidMount () {
-    await clearError()
     const config = await getConfig()
     this.setState(config)
     chrome.storage.onChanged.addListener(this.onStorageChanges)
@@ -353,7 +351,6 @@ class App extends Component {
       arch,
       currentVersion,
       error,
-      errorTracking,
       extensions,
       extensionsInfo,
       extensionsTrack,
@@ -371,6 +368,7 @@ class App extends Component {
 
       ${arch &&
         tag &&
+        current &&
         html`
           <${Section}>
             <${ChromiumInfo}
@@ -396,7 +394,6 @@ class App extends Component {
       <${Section}>
         <${Settings}
           arch="${arch}"
-          errorTracking="${errorTracking}"
           extensionsTrack="${extensionsTrack}"
           tag="${tag}"
           versions="${versions}"

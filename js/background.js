@@ -1,11 +1,14 @@
 import {
-  clearError,
   getConfig,
   getExtensionsInfo,
+  hasExtensionUpdate,
   getUserAgentData,
 } from './utils.js'
 
-const main = async (...args) => {
+const ALARM_NAME = 'main'
+let currentUpdate
+
+const update = async (...args) => {
   const config = await getConfig()
   const now = new Date()
 
@@ -18,21 +21,19 @@ const main = async (...args) => {
   }
 
   const {
-    arch,
-    extensionsInfo,
     extensionsTrack,
-    tag,
-    timestamp,
-    versions
   } = config
-
-  await clearError()
 
   const p = [
     fetch('https://chromium.woolyss.com/api/v4/?app=MTkxMDA5', {
       method: 'POST'
     })
-      .then(res => res.text())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Woolyss request failed (${res.status})`)
+        }
+        return res.text()
+      })
       .then(text => {
         try {
           const json = JSON.parse(text)
@@ -55,8 +56,10 @@ const main = async (...args) => {
     p.push(getExtensionsInfo(uaFullVersion))
   }
 
-  Promise.all(p).then(([versions, extensionsInfo]) => {
+  try {
+    const [versions, extensionsInfo] = await Promise.all(p)
     const newState = {
+      error: null,
       timestamp: now.getTime()
     }
 
@@ -69,28 +72,36 @@ const main = async (...args) => {
       newState.versions = !versions.error ? versions : {}
     }
 
-    chrome.storage.local.set(newState)
-  })
+    await chrome.storage.local.set(newState)
+  } catch (error) {
+    console.error(error)
+    await chrome.storage.local.set({
+      error: error.message || String(error),
+      timestamp: now.getTime()
+    })
+  }
+}
+
+const main = (...args) => {
+  if (!currentUpdate) {
+    currentUpdate = update(...args).finally(() => {
+      currentUpdate = null
+    })
+  }
+  return currentUpdate
+}
+
+const ensureAlarm = async () => {
+  const alarm = await chrome.alarms.get(ALARM_NAME)
+  if (!alarm) {
+    await chrome.alarms.create(ALARM_NAME, { periodInMinutes: 180 })
+  }
 }
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
-  if (reason === 'install') {
-    main()
-  }
-
-  if (reason === 'update' && localStorage.length > 0) {
-    chrome.storage.local.set(
-      {
-        arch: localStorage.arch,
-        extensionsInfo: JSON.parse(localStorage.extensionsInfo || null),
-        extensionsTrack: localStorage.extensionsTrack === 'true',
-        tag: localStorage.tag,
-        timestamp: Number(localStorage.timestamp),
-        versions: JSON.parse(localStorage.versions || null)
-      },
-      () => localStorage.clear()
-    )
-  }
+  console.debug('Extension installed', reason)
+  ensureAlarm()
+  main(reason)
 })
 
 chrome.storage.onChanged.addListener(async () => {
@@ -109,16 +120,16 @@ chrome.storage.onChanged.addListener(async () => {
     versions[arch] &&
     versions[arch].find(v => v.tag === tag)
 
-  const extensionsNew =
-    extensions?.length > 0 &&
-    extensionsInfo &&
-    !extensionsInfo
-      .filter(e => e)
-      .every(e => extensions.find(({ version }) => version === e.version))
+  const extensionsNew = extensions.some(extension =>
+    hasExtensionUpdate(
+      extension,
+      extensionsInfo.find(({ id }) => id === extension.id)
+    )
+  )
 
   const { uaFullVersion } = await getUserAgentData()
 
-  chrome.browserAction.setBadgeText({
+  chrome.action.setBadgeText({
     text:
       (current && uaFullVersion !== current.version) || extensionsNew
         ? 'New'
@@ -127,12 +138,19 @@ chrome.storage.onChanged.addListener(async () => {
 
   if (error) {
     console.error(error)
-    chrome.browserAction.setBadgeBackgroundColor({ color: [180, 0, 20, 255] })
-    chrome.browserAction.setBadgeText({ text: 'Error!' })
+    chrome.action.setBadgeBackgroundColor({ color: [180, 0, 20, 255] })
+    chrome.action.setBadgeText({ text: 'Error!' })
+  } else {
+    chrome.action.setBadgeBackgroundColor({ color: [0, 150, 180, 255] })
   }
 })
 
-chrome.alarms.onAlarm.addListener(main)
-chrome.alarms.create('main', { periodInMinutes: 180 })
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === ALARM_NAME) {
+    main(alarm.name)
+  }
+})
 
 chrome.runtime.onStartup.addListener(main)
+
+ensureAlarm()
