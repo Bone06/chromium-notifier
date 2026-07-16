@@ -16,6 +16,15 @@ const getAttributes = source =>
     {}
   )
 
+export const getHttpUrl = value => {
+  try {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol) ? url : null
+  } catch {
+    return null
+  }
+}
+
 export const parseUpdateManifest = text => {
   const apps = Array.from(
     text.matchAll(
@@ -40,7 +49,10 @@ export const parseUpdateManifest = text => {
 }
 
 export const createExtensionUpdateUrl = (updateUrl, ids, prodversion) => {
-  const url = new URL(updateUrl)
+  const url = getHttpUrl(updateUrl)
+  if (!url) {
+    throw new Error('Invalid extension update URL')
+  }
   url.searchParams.set('acceptformat', 'crx2,crx3')
   if (prodversion) {
     url.searchParams.set('prodversion', prodversion)
@@ -82,11 +94,18 @@ export const createExtensionUpdateBatches = (
 }
 
 export const getExtensionDownloadUrl = (info, currentVersion) => {
-  if (!info.codebase.includes('clients2.googleusercontent.com')) {
-    return info.codebase
+  const codebase = getHttpUrl(info?.codebase)
+  if (!codebase) {
+    return null
+  }
+  if (codebase.hostname !== 'clients2.googleusercontent.com') {
+    return codebase.href
   }
 
-  const url = new URL(info.updateUrl)
+  const url = getHttpUrl(info.updateUrl)
+  if (!url) {
+    return null
+  }
   url.searchParams.set('response', 'redirect')
   url.searchParams.set('acceptformat', 'crx2,crx3')
   if (currentVersion) {
@@ -245,14 +264,6 @@ export const getBuildSelectionStatus = ({ arch, tag, versions = {} }) => {
 const isObject = value =>
   Boolean(value && typeof value === 'object' && !Array.isArray(value))
 
-const isHttpUrl = value => {
-  try {
-    return ['http:', 'https:'].includes(new URL(value).protocol)
-  } catch {
-    return false
-  }
-}
-
 export const validateWoolyssResponse = response => {
   if (!isObject(response)) {
     throw new Error('Invalid Woolyss response: expected an object')
@@ -320,7 +331,7 @@ export const validateWoolyssResponse = response => {
             !isObject(link) ||
             typeof link.label !== 'string' ||
             !link.label.trim() ||
-            !isHttpUrl(link.url)
+            !getHttpUrl(link.url)
           ) {
             throw new Error(
               `Invalid Woolyss response: ${location}.links[${linkIndex}] is invalid`

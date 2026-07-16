@@ -33,6 +33,20 @@ const startServer = async () => {
       return
     }
 
+    if (url.pathname === '/slow') {
+      setTimeout(() => {
+        response.writeHead(200, { 'content-type': 'application/xml' })
+        response.end('<gupdate protocol="2.0"></gupdate>')
+      }, 100)
+      return
+    }
+
+    if (url.pathname === '/oversized') {
+      response.writeHead(200, { 'content-type': 'application/xml' })
+      response.end(`<gupdate>${'x'.repeat(500)}</gupdate>`)
+      return
+    }
+
     const ids = url.searchParams
       .getAll('x')
       .map(value => new URLSearchParams(value).get('id'))
@@ -51,6 +65,16 @@ const startServer = async () => {
         ? `<app appid="${id}"><updatecheck status="noupdate" /></app>`
         : `<app appid="${id}"><updatecheck status="ok" version="2.0.0" codebase="http://127.0.0.1/files/${id}.crx" /></app>`
     )
+
+    if (url.pathname === '/unrequested') {
+      apps.push(
+        '<app appid="not-requested"><updatecheck status="ok" version="9.0.0" codebase="http://127.0.0.1/files/not-requested.crx" /></app>'
+      )
+    }
+
+    if (url.pathname === '/unsafe-codebase') {
+      apps[0] = `<app appid="${ids[0]}"><updatecheck status="ok" version="9.0.0" codebase="javascript:alert(1)" /></app>`
+    }
 
     response.writeHead(200, { 'content-type': 'application/xml' })
     response.end(`<gupdate protocol="2.0">${apps.join('')}</gupdate>`)
@@ -122,6 +146,51 @@ test('fetchExtensionInfo rejects HTTP and invalid XML responses', async t => {
   await assert.rejects(
     fetchExtensionInfo(`${fixture.baseUrl}/invalid`, ['one'], '120.0.0.0'),
     /Invalid extension update manifest/
+  )
+})
+
+test('fetchExtensionInfo rejects timeouts and oversized responses', async t => {
+  const fixture = await startServer()
+  t.after(fixture.close)
+
+  await assert.rejects(
+    fetchExtensionInfo(
+      `${fixture.baseUrl}/slow`,
+      ['one'],
+      '120.0.0.0',
+      { timeoutMs: 20 }
+    ),
+    /timed out/
+  )
+  await assert.rejects(
+    fetchExtensionInfo(
+      `${fixture.baseUrl}/oversized`,
+      ['one'],
+      '120.0.0.0',
+      { maxResponseBytes: 100 }
+    ),
+    /exceeds 100 bytes/
+  )
+})
+
+test('fetchExtensionInfo ignores unrequested ids and rejects unsafe codebases', async t => {
+  const fixture = await startServer()
+  t.after(fixture.close)
+
+  const result = await fetchExtensionInfo(
+    `${fixture.baseUrl}/unrequested`,
+    ['requested'],
+    '120.0.0.0'
+  )
+  assert.deepEqual(result.map(({ id }) => id), ['requested'])
+
+  await assert.rejects(
+    fetchExtensionInfo(
+      `${fixture.baseUrl}/unsafe-codebase`,
+      ['requested'],
+      '120.0.0.0'
+    ),
+    /Invalid extension update codebase URL/
   )
 })
 

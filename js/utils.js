@@ -5,6 +5,7 @@ import {
   extractChromiumVersion,
   filterRelevantExtensions,
   getChromiumVersionFromUserAgentData,
+  getHttpUrl,
   mapPlatformToArch,
   migrateStoredConfig,
   parseUpdateManifest
@@ -12,6 +13,73 @@ import {
 
 const addIfNew = (arr = [], item) =>
   item === undefined ? arr : [...new Set([...arr]).add(item)]
+
+export const DEFAULT_REQUEST_TIMEOUT_MS = 15000
+export const MAX_REMOTE_RESPONSE_BYTES = 1024 * 1024
+
+const readResponseText = async (response, label, maxResponseBytes) => {
+  const contentLength = Number(response.headers.get('content-length'))
+  if (Number.isFinite(contentLength) && contentLength > maxResponseBytes) {
+    throw new Error(
+      `${label} response exceeds ${maxResponseBytes} bytes`
+    )
+  }
+
+  if (!response.body?.getReader) {
+    const buffer = await response.arrayBuffer()
+    if (buffer.byteLength > maxResponseBytes) {
+      throw new Error(`${label} response exceeds ${maxResponseBytes} bytes`)
+    }
+    return new TextDecoder().decode(buffer)
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let byteLength = 0
+  let text = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      return text + decoder.decode()
+    }
+    byteLength += value.byteLength
+    if (byteLength > maxResponseBytes) {
+      await reader.cancel().catch(() => {})
+      throw new Error(`${label} response exceeds ${maxResponseBytes} bytes`)
+    }
+    text += decoder.decode(value, { stream: true })
+  }
+}
+
+export const fetchText = async (
+  input,
+  init = {},
+  {
+    label = 'Request',
+    maxResponseBytes = MAX_REMOTE_RESPONSE_BYTES,
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
+  } = {}
+) => {
+  const controller = new AbortController()
+  const timeoutError = new Error(`${label} timed out after ${timeoutMs} ms`)
+  const timeout = setTimeout(() => controller.abort(timeoutError), timeoutMs)
+
+  try {
+    const response = await fetch(input, { ...init, signal: controller.signal })
+    if (!response.ok) {
+      throw new Error(`${label} failed (${response.status})`)
+    }
+    return await readResponseText(response, label, maxResponseBytes)
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw timeoutError
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 export const getSelf = () =>
   new Promise(resolve => chrome.management.get(chrome.runtime.id, resolve))
@@ -23,37 +91,49 @@ export const getInstalledExtensions = () =>
     )
   )
 
-export const fetchExtensionInfo = async (updateUrl, ids, prodversion) => {
+export const fetchExtensionInfo = async (
+  updateUrl,
+  ids,
+  prodversion,
+  requestOptions
+) => {
   const url = createExtensionUpdateUrl(updateUrl, ids, prodversion)
+  const apps = parseUpdateManifest(await fetchText(url, {}, {
+    label: 'Extension update request',
+    ...requestOptions
+  }))
+  const requestedIds = new Set(ids)
 
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Extension update request failed (${response.status})`)
-  }
+  return apps
+    .filter(({ app }) => requestedIds.has(app.appid))
+    .map(({ app, updatecheck }) => {
+      if (updatecheck?.codebase && !getHttpUrl(updatecheck.codebase)) {
+        throw new Error('Invalid extension update codebase URL')
+      }
+      const info = {
+        id: app.appid,
+        prodversion,
+        timestamp: new Date().getTime(),
+        updateUrl
+      }
 
-  const apps = parseUpdateManifest(await response.text())
-
-  return apps.map(({ app, updatecheck }) => {
-    const info = {
-      id: app.appid,
-      prodversion,
-      timestamp: new Date().getTime(),
-      updateUrl
-    }
-
-    return updatecheck
-      ? {
-          ...info,
-          ...updatecheck
-        }
-      : info
-  })
+      return updatecheck
+        ? {
+            ...info,
+            ...updatecheck
+          }
+        : info
+    })
 }
 
 export const fetchExtensionsInfo = async (
   extensions,
   prodversion,
-  { maxUrlLength = 1800 } = {}
+  {
+    maxResponseBytes = MAX_REMOTE_RESPONSE_BYTES,
+    maxUrlLength = 1800,
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
+  } = {}
 ) => {
   const jobs = extensions.reduce((acc, { id, updateUrl }) => {
     if (updateUrl) {
@@ -82,7 +162,10 @@ export const fetchExtensionsInfo = async (
   )
   const results = await Promise.allSettled(
     batchJobs.map(({ ids, updateUrl }) =>
-      fetchExtensionInfo(updateUrl, ids, prodversion)
+      fetchExtensionInfo(updateUrl, ids, prodversion, {
+        maxResponseBytes,
+        timeoutMs
+      })
     )
   )
 
@@ -106,6 +189,7 @@ export const fetchExtensionsInfo = async (
   )
 
   return {
+    extensionsGeneralError: null,
     extensionsErrors,
     extensionsInfo,
     extensionsUpdateSummary: {

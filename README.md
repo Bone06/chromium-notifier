@@ -2,11 +2,17 @@
 
 ## Manifest V3 development notes
 
+- The current source tree is the unreleased Manifest V3 version 3.0.0. The
+  published CRX and `gupdate.xml` still refer to version 2.0.0 until the new
+  package has been signed and tested as an update.
 - Tracking updates from arbitrary extension update servers requires the broad
   HTTP/HTTPS host permissions declared in `manifest.json`. This is an intentional
   compatibility trade-off and should be reviewed before distribution.
 - `gupdate.xml` still points to the last published v2 package. Update it only
   when the actual v3.0.0 CRX package is ready for release.
+- The MV3 popup supports manual checks, separate Chromium/extension/error badge
+  states, extension management, custom badge colors, and light, dark, or
+  browser-default themes.
 
 This project is going to be archived in March 2023. It's been a fun one and I'm happy to have given something back to the Chromium community. The project has been on cruise-control for quite some time anyway, mostly because I've stopped using it myself. To keep it working beyond the coming months it's going to need some updates which I simply lack the time (and motivation to make time) for. Parts of the functionality need to be re-written to work in a service worker context for manifest v3. The [privacy proxy](https://github.com/kkkrist/chromium-extension-service) needs updating to adapt to backend changes. On top of that, it's running at its capacity limits since months and I don't feel like paying for higher service tiers (it runs on Vercel/MongoDB Atlas). It doesn't help that some forks of the extension have their users hammer on the error logger either.
 
@@ -16,9 +22,14 @@ v2.0.0 (or v1.8.9 with the privacy proxy disabled) should keep working for as lo
 
 # Chromium Update Notifications
 
-This extension will periodically check [Woolyss](https://chromium.woolyss.com/) and display a "New" icon badge once the version found for the selected platform/tag is different to the one you're currently using. Additionally it can track updates for and manage all installed extensions (those supporting it).
+This extension periodically checks [Woolyss](https://chromium.woolyss.com/)
+and displays a `New` badge when the selected platform/tag provides a
+numerically newer Chromium version. It can also track updates for installed
+extensions and provide basic extension management.
 
-<img height="639" src="https://raw.githubusercontent.com/kkkrist/chromium-notifier/master/img/screenshot.webp" width="375" />
+The previous screenshot has been removed from this development README because
+it showed the historical v1 popup. A current screenshot should be captured
+from the final signed v3 package before release.
 
 ## Installation
 
@@ -42,7 +53,25 @@ Please note that it's not possible to update via "Load unpacked extension". Ever
 
 ## Configuration
 
-Click on the extension's icon, select platform (mac, win64 etc.) and tag – i.e. the Chromium version you're using – and enable tracking of extension updates if desired.
+Click the extension icon and select a platform (`mac`, `win64`, `linux`, etc.)
+and a build tag. Extension update tracking is optional. The popup also offers:
+
+- a `Check now` action;
+- separate badge states for Chromium updates, extension updates, both, and
+  errors;
+- optional custom badge colors;
+- light, dark, and browser-default popup themes;
+- enable, disable, and remove actions where Chromium permits them.
+
+## Development checks
+
+```text
+npm ci
+npm run check
+```
+
+All runtime JavaScript is bundled locally. The npm dependencies are development
+tools only and are not loaded by the extension.
 
 ~~You can also enable [error tracking](https://github.com/kkkrist/chromium-extension-service#error-tracking) to help improving this extension and increase your privacy by using a proxy to fetch extension updates. The latter will [strip all personal and adtech-related data](https://github.com/kkkrist/chromium-extension-service#version-info-for-installed-extensions) your browser might send if it requests the data directly (this was always enabled in versions prior to 1.7.0, now it's optional). I use a [public Vercel deployment](https://chrome-extension-service-kkkrist.vercel.app/_src) to host the proxy, so you can review all of the actual source code used to run it.~~ (Removed in v2.0.0, see comment on top!)
 

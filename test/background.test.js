@@ -1,0 +1,149 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+
+const createEvent = () => {
+  const listeners = []
+  return {
+    addListener: listener => listeners.push(listener),
+    listeners
+  }
+}
+
+test('background registers listeners, deduplicates checks and isolates extension failures', async t => {
+  const originalDebug = console.debug
+  const originalError = console.error
+  const originalFetch = globalThis.fetch
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    'navigator'
+  )
+  const events = {
+    alarm: createEvent(),
+    installed: createEvent(),
+    message: createEvent(),
+    startup: createEvent(),
+    storage: createEvent()
+  }
+  const actionCalls = []
+  const storageWrites = []
+  let extensions = []
+  let fetchCalls = 0
+  let fetchImplementation
+  const store = {
+    arch: 'win64',
+    extensionsTrack: true,
+    schemaVersion: 1,
+    tag: 'stable'
+  }
+
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: {
+      onLine: true,
+      userAgent: 'Chromium/150.0.0.0',
+      userAgentData: {
+        brands: [{ brand: 'Chromium', version: '150' }],
+        getHighEntropyValues: async () => ({
+          fullVersionList: [{
+            brand: 'Chromium',
+            version: '150.0.0.0'
+          }]
+        })
+      }
+    }
+  })
+  console.debug = () => {}
+  console.error = () => {}
+  globalThis.fetch = (...args) => {
+    fetchCalls += 1
+    return fetchImplementation(...args)
+  }
+  globalThis.chrome = {
+    action: {
+      setBadgeBackgroundColor: value => actionCalls.push(['color', value]),
+      setBadgeText: value => actionCalls.push(['text', value]),
+      setTitle: value => actionCalls.push(['title', value])
+    },
+    alarms: {
+      create: async () => {},
+      get: async () => null,
+      onAlarm: events.alarm
+    },
+    management: {
+      get: (id, callback) => callback({ id, type: 'extension', version: '3.0.0' }),
+      getAll: callback => callback(extensions)
+    },
+    runtime: {
+      getPlatformInfo: callback => callback({ arch: 'x86-64', os: 'win' }),
+      id: 'self',
+      onInstalled: events.installed,
+      onMessage: events.message,
+      onStartup: events.startup
+    },
+    storage: {
+      local: {
+        get: callback => callback({ ...store }),
+        set: async state => {
+          Object.assign(store, state)
+          storageWrites.push(state)
+        }
+      },
+      onChanged: events.storage
+    }
+  }
+  t.after(() => {
+    delete globalThis.chrome
+    console.debug = originalDebug
+    console.error = originalError
+    globalThis.fetch = originalFetch
+    if (navigatorDescriptor) {
+      Object.defineProperty(globalThis, 'navigator', navigatorDescriptor)
+    } else {
+      delete globalThis.navigator
+    }
+  })
+
+  await import('../js/background.js')
+  assert.equal(events.alarm.listeners.length, 1)
+  assert.equal(events.message.listeners.length, 1)
+  assert.equal(events.startup.listeners.length, 1)
+  assert.equal(events.storage.listeners.length, 1)
+
+  let resolveFetch
+  fetchImplementation = () => new Promise(resolve => {
+    resolveFetch = resolve
+  })
+  events.alarm.listeners[0]({ name: 'main' })
+  const manualResponse = new Promise(resolve => {
+    assert.equal(
+      events.message.listeners[0]({ type: 'check-now' }, {}, resolve),
+      true
+    )
+  })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(fetchCalls, 1)
+  resolveFetch(new Response(JSON.stringify({
+    win64: [{ tag: 'stable', version: '150.0.0.1' }]
+  })))
+  assert.deepEqual(await manualResponse, { ok: true })
+  assert.equal(store.versions.win64[0].version, '150.0.0.1')
+
+  extensions = [{
+    id: 'broken',
+    type: 'extension',
+    updateUrl: 'file:///invalid-update.xml'
+  }]
+  fetchImplementation = async () => new Response(JSON.stringify({
+    win64: [{ tag: 'stable', version: '150.0.0.2' }]
+  }))
+  const isolatedResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await isolatedResponse, { ok: true })
+  assert.equal(store.versions.win64[0].version, '150.0.0.2')
+  assert.match(store.extensionsGeneralError, /Invalid extension update URL/)
+
+  await events.storage.listeners[0]({}, 'local')
+  assert.ok(actionCalls.some(([type]) => type === 'text'))
+  assert.ok(storageWrites.length >= 2)
+})

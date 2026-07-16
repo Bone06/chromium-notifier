@@ -1,6 +1,7 @@
 import {
   getConfig,
   getExtensionsInfo,
+  fetchText,
   getUserAgentData,
 } from './utils.js'
 import {
@@ -33,16 +34,13 @@ const update = async (...args) => {
     extensionsTrack,
   } = config
 
-  const p = [
-    fetch('https://chromium.woolyss.com/api/v4/?app=MTkxMDA5', {
+  const woolyssJob = fetchText(
+    'https://chromium.woolyss.com/api/v4/?app=MTkxMDA5',
+    {
       method: 'POST'
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Woolyss request failed (${res.status})`)
-        }
-        return res.text()
-      })
+    },
+    { label: 'Woolyss request' }
+  )
       .then(text => {
         try {
           const json = JSON.parse(text)
@@ -53,32 +51,44 @@ const update = async (...args) => {
               text.length > 60
                 ? text.slice(0, 30) + '…' + text.slice(text.length - 30)
                 : text
-            }`
+            }`,
+            { cause: error }
           )
         }
       })
-  ]
 
   const { uaFullVersion } = await getUserAgentData()
-
-  if (extensionsTrack) {
-    p.push(getExtensionsInfo(uaFullVersion))
-  }
+  const extensionJob = extensionsTrack
+    ? getExtensionsInfo(uaFullVersion)
+    : Promise.resolve(null)
+  const [woolyssResult, extensionResult] = await Promise.allSettled([
+    woolyssJob,
+    extensionJob
+  ])
+  let newState
 
   try {
-    const [response, extensionsResult] = await Promise.all(p)
-    const versions = validateWoolyssResponse(response)
-    const newState = getWoolyssSuccessState(versions, now)
-
-    if (extensionsResult) {
-      Object.assign(newState, extensionsResult)
+    if (woolyssResult.status === 'rejected') {
+      throw woolyssResult.reason
     }
-
-    await chrome.storage.local.set(newState)
+    const versions = validateWoolyssResponse(woolyssResult.value)
+    newState = getWoolyssSuccessState(versions, now)
   } catch (error) {
     console.error(error)
-    await chrome.storage.local.set(getWoolyssErrorState(config, error, now))
+    newState = getWoolyssErrorState(config, error, now)
   }
+
+  if (extensionResult.status === 'fulfilled' && extensionResult.value) {
+    Object.assign(newState, extensionResult.value)
+  } else if (extensionResult.status === 'rejected') {
+    const message = extensionResult.reason?.message || String(
+      extensionResult.reason
+    )
+    console.error(extensionResult.reason)
+    newState.extensionsGeneralError = message
+  }
+
+  await chrome.storage.local.set(newState)
 }
 
 const main = (...args) => {
@@ -151,7 +161,7 @@ chrome.alarms.onAlarm.addListener(alarm => {
   }
 })
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== 'check-now') {
     return false
   }

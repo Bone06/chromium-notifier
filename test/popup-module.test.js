@@ -17,3 +17,8 @@ test('popup keeps spacing between the Chromium label and version', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /<span>Chromium <\/span>\s*<code>/)
 })
+
+test('popup identifies custom colors as badge colors', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(source, /Use custom badge colors/)
+})
