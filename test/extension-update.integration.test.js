@@ -129,5 +129,18 @@ test('fetchExtensionsInfo keeps successful servers when another server fails', a
     '120.0.0.0'
   )
 
-  assert.deepEqual(result.map(({ id }) => id), ['working-extension'])
+  assert.deepEqual(result.extensionsInfo.map(({ id }) => id), [
+    'working-extension'
+  ])
+  assert.deepEqual(result.extensionsErrors, [
+    {
+      updateUrl: `${fixture.baseUrl}/error`,
+      message: 'Extension update request failed (500)'
+    }
+  ])
+  assert.deepEqual(result.extensionsUpdateSummary, {
+    failed: 1,
+    succeeded: 1,
+    total: 2
+  })
 })

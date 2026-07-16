@@ -57,14 +57,14 @@ const update = async (...args) => {
   }
 
   try {
-    const [versions, extensionsInfo] = await Promise.all(p)
+    const [versions, extensionsResult] = await Promise.all(p)
     const newState = {
       error: null,
       timestamp: now.getTime()
     }
 
-    if (extensionsInfo) {
-      newState.extensionsInfo = extensionsInfo || []
+    if (extensionsResult) {
+      Object.assign(newState, extensionsResult)
     }
 
     if (versions) {

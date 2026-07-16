@@ -45,18 +45,38 @@ export const fetchExtensionsInfo = async (extensions, prodversion) => {
     return acc
   }, {})
 
+  const updateUrls = Object.keys(jobs)
   const results = await Promise.allSettled(
-    Object.keys(jobs).map(
+    updateUrls.map(
       updateUrl =>
       updateUrl &&
       fetchExtensionInfo(updateUrl, jobs[updateUrl], prodversion)
     )
   )
 
-  return results
+  const extensionsInfo = results
     .filter(({ status }) => status === 'fulfilled')
     .map(({ value }) => value)
     .flat()
+
+  const extensionsErrors = results.flatMap((result, index) =>
+    result.status === 'rejected'
+      ? [{
+          updateUrl: updateUrls[index],
+          message: result.reason?.message || String(result.reason)
+        }]
+      : []
+  )
+
+  return {
+    extensionsErrors,
+    extensionsInfo,
+    extensionsUpdateSummary: {
+      failed: extensionsErrors.length,
+      succeeded: results.length - extensionsErrors.length,
+      total: results.length
+    }
+  }
 }
 
 export const getUserAgentData = async () => {

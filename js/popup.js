@@ -25,8 +25,8 @@ const changeBoolSetting = ({ target: { checked, name } }) => {
   if (name === 'extensionsTrack' && checked) {
     getUserAgentData()
       .then(({ uaFullVersion }) => getExtensionsInfo(uaFullVersion))
-      .then(extensionsInfo => {
-        newState.extensionsInfo = extensionsInfo
+      .then(extensionsResult => {
+        Object.assign(newState, extensionsResult)
       })
       .finally(() => {
         chrome.storage.local.set(newState)
@@ -89,7 +89,9 @@ const ChromiumInfo = ({ arch, current = {}, currentVersion, tag }) => html`
 const ExtensionsInfo = ({
   currentVersion,
   extensions = [],
+  extensionsErrors = [],
   extensionsInfo = [],
+  extensionsUpdateSummary = {},
   onDisableExtension
 }) => {
   const supported = extensions
@@ -192,6 +194,24 @@ const ExtensionsInfo = ({
               `
             })}
           </ul>
+        `}
+      ${extensionsErrors.length > 0 &&
+        html`
+          <div style="display: block; margin-top: 0.75rem; white-space: normal;">
+            <small style="color: #b00020;">
+              Update information unavailable from
+              ${extensionsUpdateSummary.failed || extensionsErrors.length} of
+              ${extensionsUpdateSummary.total || extensionsErrors.length}
+              servers.
+            </small>
+            <ul>
+              ${extensionsErrors.map(({ message, updateUrl }) => html`
+                <li>
+                  <code>${new URL(updateUrl).host}</code>: ${message}
+                </li>
+              `)}
+            </ul>
+          </div>
         `}
     </details>
   `
@@ -302,7 +322,9 @@ const Settings = ({
 class App extends Component {
   state = {
     extensions: [],
+    extensionsErrors: [],
     extensionsInfo: [],
+    extensionsUpdateSummary: {},
     self: {},
     versions: {}
   }
@@ -342,8 +364,10 @@ class App extends Component {
       currentVersion,
       error,
       extensions,
+      extensionsErrors,
       extensionsInfo,
       extensionsTrack,
+      extensionsUpdateSummary,
       self,
       tag,
       timestamp,
@@ -375,7 +399,9 @@ class App extends Component {
             <${ExtensionsInfo}
               currentVersion="${currentVersion}"
               extensions="${extensions}"
+              extensionsErrors="${extensionsErrors}"
               extensionsInfo="${extensionsInfo}"
+              extensionsUpdateSummary="${extensionsUpdateSummary}"
               onDisableExtension="${this.onDisableExtension}"
             />
           <//>
