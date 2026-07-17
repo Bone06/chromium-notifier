@@ -91,11 +91,13 @@ const ChromiumInfo = ({
     </summary>
     <ul>
       <li>
-        <span>Available: </span>
+        <span class="muted-label">Available: </span>
         <code class="${versionStatus === 'update-available' && 'badge'}"
           >v${current.version}</code
         >
         <button
+          aria-busy="${checking}"
+          aria-live="polite"
           class="check-now"
           disabled="${checking}"
           onClick="${onCheckNow}"
@@ -103,16 +105,18 @@ const ChromiumInfo = ({
         >${checking ? 'Checking…' : 'Check now'}</button>
       </li>
       <li>
-        <span>Revision: ${current.revision} </span>
+        <span class="muted-label">Revision: </span>${current.revision}
         (${new Date(current.timestamp * 1000).toLocaleString()})
       </li>
       ${current.links &&
         html`
           <li>
-            <span>Downloads: </span>
+            <span class="muted-label">Downloads: </span>
             ${current.links.map(
               ({ label, url }, i) => html`
-                <a href="${url}" target="_blank">${label}</a>
+                <a href="${url}" rel="noopener noreferrer" target="_blank"
+                  >${label}</a
+                >
                 ${i + 1 < current.links.length && ', '}
               `
             )}
@@ -122,7 +126,7 @@ const ChromiumInfo = ({
     <div style="font-size: smaller; margin-top: 1em">
       ${woolyssDataStale &&
         html`
-          <p class="setting-warning">
+          <p aria-live="polite" class="setting-warning">
             Latest check failed. Showing data from
             ${lastSuccessAt
               ? new Date(lastSuccessAt).toLocaleString()
@@ -138,12 +142,15 @@ const ChromiumInfo = ({
         `}
       ${versionStatus === 'unknown' &&
         html`
-          <p class="compact-message error-text">
+          <p aria-live="polite" class="compact-message error-text">
             Chromium versions could not be compared.
           </p>
         `}
       <span>Tracking </span>
-      <a href="https://chromium.woolyss.com/#${arch}-${tag}" target="_blank"
+      <a
+        href="https://chromium.woolyss.com/#${arch}-${tag}"
+        rel="noopener noreferrer"
+        target="_blank"
         >${arch}-${tag}</a
       >
     </div>
@@ -183,6 +190,7 @@ const ExtensionRow = ({
     <li>
       <div class="${extension.enabled ? '' : ' disabled'}">
         <input
+          aria-label="${toggleTitle} ${extension.name}"
           checked="${extension.enabled}"
           disabled="${pending || !canToggle}"
           id="${extension.id}"
@@ -193,7 +201,11 @@ const ExtensionRow = ({
         />
         ${extension.homepageUrl
           ? html`
-              <a href="${extension.homepageUrl}" target="_blank">
+              <a
+                href="${extension.homepageUrl}"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 <span>${extension.name} </span>
               </a>
             `
@@ -206,6 +218,7 @@ const ExtensionRow = ({
               <a
                 class="badge"
                 href="${downloadUrl}"
+                rel="noopener noreferrer"
                 target="_blank"
               >v${info.version}</a>
             `}
@@ -215,6 +228,9 @@ const ExtensionRow = ({
       </div>
       <div>
         <button
+          aria-label="${canRemove
+            ? `Remove ${extension.name}`
+            : `${extension.name} cannot be removed`}"
           class="remove"
           disabled="${pending || !canRemove}"
           id="${extension.id}"
@@ -267,7 +283,7 @@ const ExtensionsInfo = ({
         `}
       ${extensionsGeneralError &&
         html`
-          <p class="management-error">
+          <p aria-live="polite" class="management-error">
             Extension update check failed: ${extensionsGeneralError}
           </p>
         `}
@@ -308,7 +324,7 @@ const ExtensionsInfo = ({
       ${extensionsErrors.length > 0 &&
         html`
           <div style="display: block; margin-top: 0.75rem; white-space: normal;">
-            <small class="error-text">
+            <small aria-live="polite" class="error-text">
               Update information partially or fully unavailable from
               ${extensionsUpdateSummary.failed || extensionsErrors.length} of
               ${extensionsUpdateSummary.total || extensionsErrors.length}
@@ -339,14 +355,25 @@ const Header = ({ version }) => html`
     <div>
       <p class="header-title">
         <strong>Chromium Update Notifications </strong>
-        <code>${version && `v${version}`}</code>
+        <code class="muted-label">${version && `v${version}`}</code>
       </p>
-      <span>based on </span>
-      <a href="https://chromium.woolyss.com/" target="_blank">Woolyss</a>
+      <div class="supplemental-info">
+        <span>based on </span>
+        <a
+          href="https://chromium.woolyss.com/"
+          rel="noopener noreferrer"
+          target="_blank"
+        >Woolyss</a>
+      </div>
     </div>
     <div class="header-cell">
-      <a href="https://github.com/kkkrist/chromium-notifier" target="_blank">
-        <img src="../img/github.svg" style="height: 1rem; width: auto;" />
+      <a
+        aria-label="Open the project on GitHub"
+        href="https://github.com/kkkrist/chromium-notifier"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        <img alt="" src="../img/github.svg" style="height: 1rem; width: auto;" />
       </a>
     </div>
   </div>
@@ -364,7 +391,7 @@ class Section extends Component {
       <section>
         ${errorMsg
           ? html`
-              <small class="error-text">${errorMsg}</small>
+              <small aria-live="polite" class="error-text">${errorMsg}</small>
             `
           : children}
       </section>
@@ -517,6 +544,8 @@ const Settings = ({
  */
 
 class App extends Component {
+  mounted = false
+
   state = {
     checking: false,
     badgeColors: {},
@@ -592,7 +621,11 @@ class App extends Component {
     )
   }
 
-  onStorageChanges = changes => {
+  onStorageChanges = (changes, areaName) => {
+    if (areaName !== 'local') {
+      return
+    }
+
     this.setState(
       Object.keys(changes).reduce(
         (acc, key) => ({ ...acc, [key]: changes[key].newValue }),
@@ -602,16 +635,21 @@ class App extends Component {
   }
 
   async componentDidMount () {
-    const config = await getConfig()
-    this.setState(config)
+    this.mounted = true
     chrome.storage.onChanged.addListener(this.onStorageChanges)
     chrome.management.onDisabled.addListener(this.onManagementChange)
     chrome.management.onEnabled.addListener(this.onManagementChange)
     chrome.management.onInstalled.addListener(this.onManagementChange)
     chrome.management.onUninstalled.addListener(this.onManagementChange)
+
+    const config = await getConfig()
+    if (this.mounted) {
+      this.setState(config)
+    }
   }
 
   componentWillUnmount () {
+    this.mounted = false
     chrome.storage.onChanged.removeListener(this.onStorageChanges)
     chrome.management.onDisabled.removeListener(this.onManagementChange)
     chrome.management.onEnabled.removeListener(this.onManagementChange)
@@ -703,20 +741,20 @@ class App extends Component {
       <//>
 
       <${Section}>
-        <small>
+        <small class="supplemental-info">
           ${lastAttemptAt
             ? `Last check attempt: ${new Date(lastAttemptAt).toLocaleString()}`
             : `Waiting for data…`}
         </small>
         ${lastSuccessAt &&
           html`
-            <small>
+            <small class="supplemental-info">
               Last successful check: ${new Date(lastSuccessAt).toLocaleString()}
             </small>
           `}
         ${woolyssError &&
           html`
-            <small class="error-text last-error">
+            <small aria-live="polite" class="error-text last-error">
               Last error${lastErrorAt
                 ? ` (${new Date(lastErrorAt).toLocaleString()})`
                 : ''}: ${woolyssError}

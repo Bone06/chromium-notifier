@@ -22,3 +22,24 @@ test('popup identifies custom colors as badge colors', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /Use custom badge colors/)
 })
+
+test('popup guards asynchronous initialization and local storage changes', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(source, /if \(areaName !== 'local'\)/)
+  assert.match(source, /if \(this\.mounted\) \{\s*this\.setState\(config\)/)
+  assert.match(source, /componentWillUnmount \(\) \{\s*this\.mounted = false/)
+})
+
+test('popup provides accessible controls, live status and external links', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+
+  assert.match(source, /aria-label="\$\{toggleTitle\} \$\{extension\.name\}"/)
+  assert.match(source, /aria-label="Open the project on GitHub"/)
+  assert.match(source, /aria-live="polite"/)
+  assert.equal(
+    source.match(/target="_blank"/g)?.length,
+    source.match(/rel="noopener noreferrer"/g)?.length
+  )
+  assert.match(styles, /summary:focus-visible/)
+})
