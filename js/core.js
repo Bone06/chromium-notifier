@@ -347,6 +347,132 @@ export const validateWoolyssResponse = response => {
   return versions
 }
 
+const getHttpsUrl = value => {
+  const url = getHttpUrl(value)
+  return url?.protocol === 'https:' ? url : null
+}
+
+const getIsoTimestamp = (value, location) => {
+  const timestamp = typeof value === 'string' ? Date.parse(value) : NaN
+  if (!Number.isFinite(timestamp)) {
+    throw new Error(`Invalid build source feed: ${location} is invalid`)
+  }
+  return timestamp
+}
+
+export const validateBuildSourcesFeed = response => {
+  if (!isObject(response) || response.schemaVersion !== 1) {
+    throw new Error('Invalid build source feed: expected schemaVersion 1')
+  }
+
+  getIsoTimestamp(response.generatedAt, 'generatedAt')
+  if (!Array.isArray(response.sources) || !response.sources.length) {
+    throw new Error('Invalid build source feed: sources must not be empty')
+  }
+  if (!Array.isArray(response.builds) || !response.builds.length) {
+    throw new Error('Invalid build source feed: builds must not be empty')
+  }
+
+  const sources = new Map()
+  response.sources.forEach((source, index) => {
+    const location = `sources[${index}]`
+    if (
+      !isObject(source) ||
+      typeof source.id !== 'string' ||
+      !source.id.trim() ||
+      typeof source.name !== 'string' ||
+      !source.name.trim() ||
+      !getHttpsUrl(source.repository) ||
+      typeof source.stale !== 'boolean' ||
+      (source.error !== null && typeof source.error !== 'string')
+    ) {
+      throw new Error(`Invalid build source feed: ${location} is invalid`)
+    }
+    if (sources.has(source.id)) {
+      throw new Error(`Invalid build source feed: duplicate source ${source.id}`)
+    }
+    getIsoTimestamp(source.checkedAt, `${location}.checkedAt`)
+    getIsoTimestamp(source.lastSuccessAt, `${location}.lastSuccessAt`)
+    sources.set(source.id, source)
+  })
+
+  const buildIds = new Set()
+  const versions = {}
+  response.builds.forEach((build, index) => {
+    const location = `builds[${index}]`
+    const source = isObject(build) ? sources.get(build.sourceId) : null
+    if (
+      !isObject(build) ||
+      typeof build.id !== 'string' ||
+      !build.id.trim() ||
+      typeof build.platform !== 'string' ||
+      !/^[a-z0-9_-]+$/.test(build.platform) ||
+      typeof build.architecture !== 'string' ||
+      !build.architecture.trim() ||
+      typeof build.tag !== 'string' ||
+      !build.tag.trim() ||
+      typeof build.channel !== 'string' ||
+      !build.channel.trim() ||
+      !/^\d+(?:\.\d+){3}$/.test(build.version || '') ||
+      (build.revision !== undefined && !/^\d+$/.test(build.revision)) ||
+      !source ||
+      !getHttpsUrl(build.releaseUrl) ||
+      !Array.isArray(build.downloads) ||
+      !build.downloads.length
+    ) {
+      throw new Error(`Invalid build source feed: ${location} is invalid`)
+    }
+    if (buildIds.has(build.id)) {
+      throw new Error(`Invalid build source feed: duplicate build ${build.id}`)
+    }
+    buildIds.add(build.id)
+
+    const publishedAt = getIsoTimestamp(
+      build.publishedAt,
+      `${location}.publishedAt`
+    )
+    const links = build.downloads.map((download, downloadIndex) => {
+      if (
+        !isObject(download) ||
+        typeof download.label !== 'string' ||
+        !download.label.trim() ||
+        typeof download.name !== 'string' ||
+        !download.name.trim() ||
+        !Number.isSafeInteger(download.size) ||
+        download.size <= 0 ||
+        !getHttpsUrl(download.url)
+      ) {
+        throw new Error(
+          `Invalid build source feed: ${location}.downloads[${downloadIndex}] is invalid`
+        )
+      }
+      return { label: download.label, url: download.url }
+    })
+
+    const normalizedBuild = {
+      links,
+      releaseUrl: build.releaseUrl,
+      revision: build.revision,
+      source: {
+        id: source.id,
+        name: source.name,
+        repository: source.repository
+      },
+      tag: build.tag,
+      timestamp: publishedAt / 1000,
+      version: build.version
+    }
+    versions[build.platform] ||= []
+    versions[build.platform].push(normalizedBuild)
+  })
+
+  return {
+    generatedAt: response.generatedAt,
+    sources: response.sources,
+    versions
+  }
+}
+
 export const getWoolyssSuccessState = (versions, now = Date.now()) => ({
   error: null,
   lastAttemptAt: now,

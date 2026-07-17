@@ -68,13 +68,11 @@ const changeTheme = e =>
  */
 
 const ChromiumInfo = ({
-  arch,
   checking,
   current = {},
   currentVersion,
   lastSuccessAt,
   onCheckNow,
-  tag,
   woolyssDataStale,
   woolyssError
 }) => {
@@ -146,12 +144,12 @@ const ChromiumInfo = ({
             Chromium versions could not be compared.
           </p>
         `}
-      <span>Tracking </span>
+      <span>Source </span>
       <a
-        href="https://chromium.woolyss.com/#${arch}-${tag}"
+        href="${current.releaseUrl}"
         rel="noopener noreferrer"
         target="_blank"
-        >${arch}-${tag}</a
+        >${current.source.name}</a
       >
     </div>
   </details>
@@ -350,7 +348,7 @@ const ExtensionsInfo = ({
   `
 }
 
-const Header = ({ version }) => html`
+const Header = ({ source, version }) => html`
   <div>
     <div>
       <p class="header-title">
@@ -358,12 +356,16 @@ const Header = ({ version }) => html`
         <code class="muted-label">${version && `v${version}`}</code>
       </p>
       <div class="supplemental-info">
-        <span>based on </span>
-        <a
-          href="https://chromium.woolyss.com/"
-          rel="noopener noreferrer"
-          target="_blank"
-        >Woolyss</a>
+        <span>build data from </span>
+        ${source
+          ? html`
+              <a
+                href="${source.repository}"
+                rel="noopener noreferrer"
+                target="_blank"
+              >${source.name}</a>
+            `
+          : 'local source feed'}
       </div>
     </div>
     <div class="header-cell">
@@ -689,7 +691,9 @@ class App extends Component {
     const selectionStatus = getBuildSelectionStatus({ arch, tag, versions })
 
     return html`
-      <${Section}><${Header} version="${self && self.version}"/><//>
+      <${Section}>
+        <${Header} source="${current?.source}" version="${self && self.version}"/>
+      <//>
 
       ${arch &&
         tag &&
@@ -697,13 +701,11 @@ class App extends Component {
         html`
           <${Section}>
             <${ChromiumInfo}
-              arch="${arch}"
               checking="${checking}"
               current="${current}"
               currentVersion="${currentVersion}"
               lastSuccessAt="${lastSuccessAt}"
               onCheckNow="${this.onCheckNow}"
-              tag="${tag}"
               woolyssDataStale="${woolyssDataStale}"
               woolyssError="${woolyssError}"
             />

@@ -24,6 +24,7 @@ import {
   matchExtension,
   migrateStoredConfig,
   parseUpdateManifest,
+  validateBuildSourcesFeed,
   validateWoolyssResponse
 } from '../js/core.js'
 
@@ -34,6 +35,39 @@ const woolyssResponse = {
     tag: 'stable',
     timestamp: 1700000000,
     version: '150.0.0.1'
+  }]
+}
+
+const buildSourceFeed = {
+  builds: [{
+    architecture: 'x64',
+    capabilities: { official: true },
+    channel: 'stable',
+    downloads: [{
+      label: 'Archive',
+      name: 'chrome.7z',
+      size: 123,
+      url: 'https://github.com/Hibbiki/chromium-win64/releases/download/v150.0.0.1-r1/chrome.7z'
+    }],
+    id: 'hibbiki-win64',
+    platform: 'win64',
+    publishedAt: '2026-07-17T12:00:00.000Z',
+    releaseUrl: 'https://github.com/Hibbiki/chromium-win64/releases/tag/v150.0.0.1-r1',
+    revision: '1',
+    sourceId: 'hibbiki',
+    tag: 'stable-codecs-sync',
+    version: '150.0.0.1'
+  }],
+  generatedAt: '2026-07-17T12:00:00.000Z',
+  schemaVersion: 1,
+  sources: [{
+    checkedAt: '2026-07-17T12:00:00.000Z',
+    error: null,
+    id: 'hibbiki',
+    lastSuccessAt: '2026-07-17T12:00:00.000Z',
+    name: 'Hibbiki/chromium-win64',
+    repository: 'https://github.com/Hibbiki/chromium-win64/',
+    stale: false
   }]
 }
 
@@ -185,6 +219,43 @@ test('validateWoolyssResponse accepts platform build data', () => {
   assert.deepEqual(
     validateWoolyssResponse({ ...woolyssResponse, error: null }),
     woolyssResponse
+  )
+})
+
+test('validateBuildSourcesFeed normalizes the versioned source feed', () => {
+  const result = validateBuildSourcesFeed(buildSourceFeed)
+
+  assert.equal(result.generatedAt, buildSourceFeed.generatedAt)
+  assert.equal(result.versions.win64[0].version, '150.0.0.1')
+  assert.equal(result.versions.win64[0].tag, 'stable-codecs-sync')
+  assert.equal(result.versions.win64[0].source.name, 'Hibbiki/chromium-win64')
+  assert.equal(result.versions.win64[0].timestamp, 1784289600)
+})
+
+test('validateBuildSourcesFeed rejects unsafe and inconsistent feeds', () => {
+  assert.throws(
+    () => validateBuildSourcesFeed({ ...buildSourceFeed, schemaVersion: 2 }),
+    /schemaVersion 1/
+  )
+  assert.throws(
+    () => validateBuildSourcesFeed({
+      ...buildSourceFeed,
+      builds: [{ ...buildSourceFeed.builds[0], sourceId: 'unknown' }]
+    }),
+    /builds\[0\] is invalid/
+  )
+  assert.throws(
+    () => validateBuildSourcesFeed({
+      ...buildSourceFeed,
+      builds: [{
+        ...buildSourceFeed.builds[0],
+        downloads: [{
+          ...buildSourceFeed.builds[0].downloads[0],
+          url: 'javascript:alert(1)'
+        }]
+      }]
+    }),
+    /downloads\[0\] is invalid/
   )
 })
 

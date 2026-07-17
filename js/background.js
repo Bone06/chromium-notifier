@@ -9,10 +9,11 @@ import {
   getBadgeStatus,
   getWoolyssErrorState,
   getWoolyssSuccessState,
-  validateWoolyssResponse
+  validateBuildSourcesFeed
 } from './core.js'
 
 const ALARM_NAME = 'main'
+const BUILD_FEED_URL = 'http://127.0.0.1:8787/versions.json'
 let currentUpdate
 
 const update = async (...args) => {
@@ -34,12 +35,10 @@ const update = async (...args) => {
     extensionsTrack,
   } = config
 
-  const woolyssJob = fetchText(
-    'https://chromium.woolyss.com/api/v4/?app=MTkxMDA5',
-    {
-      method: 'POST'
-    },
-    { label: 'Woolyss request' }
+  const buildFeedJob = fetchText(
+    BUILD_FEED_URL,
+    {},
+    { label: 'Chromium build source feed' }
   )
       .then(text => {
         try {
@@ -47,7 +46,7 @@ const update = async (...args) => {
           return json
         } catch (error) {
           throw new Error(
-            `${error.message} (Woolyss API): ${
+            `${error.message} (build source feed): ${
               text.length > 60
                 ? text.slice(0, 30) + '…' + text.slice(text.length - 30)
                 : text
@@ -61,18 +60,24 @@ const update = async (...args) => {
   const extensionJob = extensionsTrack
     ? getExtensionsInfo(uaFullVersion)
     : Promise.resolve(null)
-  const [woolyssResult, extensionResult] = await Promise.allSettled([
-    woolyssJob,
+  const [buildFeedResult, extensionResult] = await Promise.allSettled([
+    buildFeedJob,
     extensionJob
   ])
   let newState
 
   try {
-    if (woolyssResult.status === 'rejected') {
-      throw woolyssResult.reason
+    if (buildFeedResult.status === 'rejected') {
+      throw buildFeedResult.reason
     }
-    const versions = validateWoolyssResponse(woolyssResult.value)
-    newState = getWoolyssSuccessState(versions, now)
+    const { generatedAt, sources, versions } = validateBuildSourcesFeed(
+      buildFeedResult.value
+    )
+    newState = {
+      ...getWoolyssSuccessState(versions, now),
+      buildFeedGeneratedAt: generatedAt,
+      buildFeedSources: sources
+    }
   } catch (error) {
     console.error(error)
     newState = getWoolyssErrorState(config, error, now)

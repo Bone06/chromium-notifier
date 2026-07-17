@@ -9,6 +9,44 @@ const createEvent = () => {
   }
 }
 
+const createBuildFeed = version => ({
+  builds: [{
+    architecture: 'x64',
+    capabilities: {
+      official: true,
+      proprietaryCodecs: true,
+      sync: true,
+      widevine: true
+    },
+    channel: 'stable',
+    downloads: [{
+      label: 'Archive',
+      name: 'chrome.7z',
+      size: 123,
+      url: `https://github.com/Hibbiki/chromium-win64/releases/download/v${version}-r1/chrome.7z`
+    }],
+    id: 'hibbiki-win64',
+    platform: 'win64',
+    publishedAt: '2026-07-17T12:00:00.000Z',
+    releaseUrl: `https://github.com/Hibbiki/chromium-win64/releases/tag/v${version}-r1`,
+    revision: '1',
+    sourceId: 'hibbiki',
+    tag: 'stable-codecs-sync',
+    version
+  }],
+  generatedAt: '2026-07-17T12:00:00.000Z',
+  schemaVersion: 1,
+  sources: [{
+    checkedAt: '2026-07-17T12:00:00.000Z',
+    error: null,
+    id: 'hibbiki',
+    lastSuccessAt: '2026-07-17T12:00:00.000Z',
+    name: 'Hibbiki/chromium-win64',
+    repository: 'https://github.com/Hibbiki/chromium-win64/',
+    stale: false
+  }]
+})
+
 test('background registers listeners, deduplicates checks and isolates extension failures', async t => {
   const originalDebug = console.debug
   const originalError = console.error
@@ -33,7 +71,7 @@ test('background registers listeners, deduplicates checks and isolates extension
     arch: 'win64',
     extensionsTrack: true,
     schemaVersion: 1,
-    tag: 'stable'
+    tag: 'stable-codecs-sync'
   }
 
   Object.defineProperty(globalThis, 'navigator', {
@@ -122,9 +160,7 @@ test('background registers listeners, deduplicates checks and isolates extension
   })
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(fetchCalls, 1)
-  resolveFetch(new Response(JSON.stringify({
-    win64: [{ tag: 'stable', version: '150.0.0.1' }]
-  })))
+  resolveFetch(new Response(JSON.stringify(createBuildFeed('150.0.0.1'))))
   assert.deepEqual(await manualResponse, { ok: true })
   assert.equal(store.versions.win64[0].version, '150.0.0.1')
 
@@ -133,9 +169,8 @@ test('background registers listeners, deduplicates checks and isolates extension
     type: 'extension',
     updateUrl: 'file:///invalid-update.xml'
   }]
-  fetchImplementation = async () => new Response(JSON.stringify({
-    win64: [{ tag: 'stable', version: '150.0.0.2' }]
-  }))
+  fetchImplementation = async () =>
+    new Response(JSON.stringify(createBuildFeed('150.0.0.2')))
   const isolatedResponse = new Promise(resolve => {
     events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
   })
