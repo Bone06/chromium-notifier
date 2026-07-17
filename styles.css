@@ -7,6 +7,7 @@
   --install-type-background: #e8eaed;
   --install-type-text: #3c4043;
   --link: #3367d6;
+  --muted-text: #80868b;
   --strong-text: #202124;
   --text: #5f6368;
   color-scheme: light;
@@ -21,6 +22,7 @@
   --install-type-background: #3c4043;
   --install-type-text: #e8eaed;
   --link: #8ab4f8;
+  --muted-text: #9aa0a6;
   --strong-text: #f1f3f4;
   --text: #bdc1c6;
   color-scheme: dark;
@@ -36,6 +38,7 @@
     --install-type-background: #3c4043;
     --install-type-text: #e8eaed;
     --link: #8ab4f8;
+    --muted-text: #9aa0a6;
     --strong-text: #f1f3f4;
     --text: #bdc1c6;
     color-scheme: dark;
@@ -50,6 +53,15 @@
 a {
   color: var(--link);
   text-decoration: none;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
 }
 
 body {
@@ -207,6 +219,15 @@ button.check-now {
 .header-title {
   color: var(--strong-text);
   margin: 0;
+}
+
+.supplemental-info {
+  color: var(--muted-text);
+  font-size: smaller;
+}
+
+.muted-label {
+  color: var(--muted-text);
 }
 
 .header-cell img {
