@@ -49,6 +49,7 @@ const buildSourceFeed = {
       size: 123,
       url: 'https://github.com/Hibbiki/chromium-win64/releases/download/v150.0.0.1-r1/chrome.7z'
     }],
+    displayName: 'Hibbiki – Stable – Sync – All Codecs+',
     id: 'hibbiki-win64',
     platform: 'win64',
     publishedAt: '2026-07-17T12:00:00.000Z',
@@ -228,8 +229,25 @@ test('validateBuildSourcesFeed normalizes the versioned source feed', () => {
   assert.equal(result.generatedAt, buildSourceFeed.generatedAt)
   assert.equal(result.versions.win64[0].version, '150.0.0.1')
   assert.equal(result.versions.win64[0].tag, 'stable-codecs-sync')
+  assert.equal(
+    result.versions.win64[0].displayName,
+    'Hibbiki – Stable – Sync – All Codecs+'
+  )
   assert.equal(result.versions.win64[0].source.name, 'Hibbiki/chromium-win64')
   assert.equal(result.versions.win64[0].timestamp, 1784289600)
+})
+
+test('validateBuildSourcesFeed falls back to tag and rejects unsafe display names', () => {
+  const withoutDisplayName = structuredClone(buildSourceFeed)
+  delete withoutDisplayName.builds[0].displayName
+  assert.equal(
+    validateBuildSourcesFeed(withoutDisplayName).versions.win64[0].displayName,
+    'stable-codecs-sync'
+  )
+
+  const invalid = structuredClone(buildSourceFeed)
+  invalid.builds[0].displayName = 'Unsafe\nlabel'
+  assert.throws(() => validateBuildSourcesFeed(invalid), /builds\[0\] is invalid/)
 })
 
 test('validateBuildSourcesFeed rejects unsafe and inconsistent feeds', () => {

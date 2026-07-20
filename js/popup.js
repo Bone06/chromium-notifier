@@ -467,7 +467,7 @@ const Settings = ({
             versions[arch].map(
               tagOpts => html`
                 <option selected="${tagOpts.tag === tag}" value="${tagOpts.tag}"
-                  >${tagOpts.tag}</option
+                  >${tagOpts.displayName || tagOpts.tag}</option
                 >
               `
             )}

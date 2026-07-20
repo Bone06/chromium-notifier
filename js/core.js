@@ -360,6 +360,11 @@ const getIsoTimestamp = (value, location) => {
   return timestamp
 }
 
+const hasControlCharacters = value => [...value].some(character => {
+  const code = character.charCodeAt(0)
+  return code <= 31 || code === 127
+})
+
 export const validateBuildSourcesFeed = response => {
   if (!isObject(response) || response.schemaVersion !== 1) {
     throw new Error('Invalid build source feed: expected schemaVersion 1')
@@ -411,6 +416,11 @@ export const validateBuildSourcesFeed = response => {
       !build.architecture.trim() ||
       typeof build.tag !== 'string' ||
       !build.tag.trim() ||
+      (build.displayName !== undefined &&
+        (typeof build.displayName !== 'string' ||
+          !build.displayName.trim() ||
+          build.displayName.length > 120 ||
+          hasControlCharacters(build.displayName))) ||
       typeof build.channel !== 'string' ||
       !build.channel.trim() ||
       !/^\d+(?:\.\d+){3}$/.test(build.version || '') ||
@@ -450,6 +460,7 @@ export const validateBuildSourcesFeed = response => {
     })
 
     const normalizedBuild = {
+      displayName: build.displayName || build.tag,
       links,
       releaseUrl: build.releaseUrl,
       revision: build.revision,
