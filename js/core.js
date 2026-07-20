@@ -261,6 +261,11 @@ export const getBuildSelectionStatus = ({ arch, tag, versions = {} }) => {
   return 'valid'
 }
 
+export const getCompactBuildName = displayName => displayName
+  .replace(' – Modified', '')
+  .replace(' – All Codecs+', '')
+  .replace(' – All Codecs', '')
+
 const isObject = value =>
   Boolean(value && typeof value === 'object' && !Array.isArray(value))
 

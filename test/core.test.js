@@ -12,6 +12,7 @@ import {
   getBadgePresentation,
   getBadgeStatus,
   getBuildSelectionStatus,
+  getCompactBuildName,
   getChromiumVersionStatus,
   getChromiumVersionFromUserAgentData,
   getExtensionDownloadUrl,
@@ -235,6 +236,17 @@ test('validateBuildSourcesFeed normalizes the versioned source feed', () => {
   )
   assert.equal(result.versions.win64[0].source.name, 'Hibbiki/chromium-win64')
   assert.equal(result.versions.win64[0].timestamp, 1784289600)
+})
+
+test('getCompactBuildName keeps source and variant while removing repeated details', () => {
+  assert.equal(
+    getCompactBuildName('RobRich – Dev – AVX2 – Modified – All Codecs+ – DEB'),
+    'RobRich – Dev – AVX2 – DEB'
+  )
+  assert.equal(
+    getCompactBuildName('Hibbiki – Stable – Sync – All Codecs+'),
+    'Hibbiki – Stable – Sync'
+  )
 })
 
 test('validateBuildSourcesFeed falls back to tag and rejects unsafe display names', () => {

@@ -9,6 +9,7 @@ import {
 import {
   DEFAULT_BADGE_COLORS,
   getBuildSelectionStatus,
+  getCompactBuildName,
   getChromiumVersionStatus,
   getDefaultBadgeColors,
   getExtensionDownloadUrl,
@@ -404,6 +405,7 @@ class Section extends Component {
 const Settings = ({
   arch,
   badgeColors = {},
+  current,
   extensionsTrack,
   selectionStatus,
   tag,
@@ -467,11 +469,17 @@ const Settings = ({
             versions[arch].map(
               tagOpts => html`
                 <option selected="${tagOpts.tag === tag}" value="${tagOpts.tag}"
-                  >${tagOpts.displayName || tagOpts.tag}</option
+                  >${getCompactBuildName(tagOpts.displayName || tagOpts.tag)}</option
                 >
               `
             )}
         </select>
+        ${current &&
+          html`
+            <small class="selected-build-details">
+              ${current.displayName || current.tag}
+            </small>
+          `}
       </label>
 
       <p style="margin: 1rem 0;">
@@ -733,6 +741,7 @@ class App extends Component {
         <${Settings}
           arch="${arch}"
           badgeColors="${badgeColors}"
+          current="${current}"
           extensionsTrack="${extensionsTrack}"
           selectionStatus="${selectionStatus}"
           tag="${tag}"

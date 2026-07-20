@@ -69,7 +69,7 @@ body {
   color: var(--text);
   font-size: 13px;
   margin: 0;
-  min-width: 360px;
+  min-width: 400px;
   white-space: nowrap;
 }
 
@@ -224,6 +224,13 @@ button.check-now {
 .supplemental-info {
   color: var(--muted-text);
   font-size: smaller;
+}
+
+.selected-build-details {
+  color: var(--muted-text);
+  display: block;
+  margin-top: 0.35rem;
+  white-space: normal;
 }
 
 .muted-label {
