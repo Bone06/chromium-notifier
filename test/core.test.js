@@ -692,11 +692,12 @@ test('getExtensionDownloadUrl rejects unsafe URLs and checks exact hostnames', (
 
 test('mapPlatformToArch maps supported platforms', () => {
   assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'win' }), 'win64')
-  assert.equal(mapPlatformToArch({ arch: 'x86-32', os: 'win' }), 'win32')
-  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'win' }), 'win64')
-  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'mac' }), 'mac')
+  assert.equal(mapPlatformToArch({ arch: 'x86-32', os: 'win' }), undefined)
+  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'win' }), 'winarm64')
+  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'mac' }), 'macarm64')
+  assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'mac' }), 'mac')
   assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'linux' }), 'linux')
-  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'linux' }), 'linux')
-  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'android' }), 'android')
+  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'linux' }), undefined)
+  assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'android' }), undefined)
   assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'cros' }), undefined)
 })

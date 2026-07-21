@@ -116,14 +116,14 @@ export const getExtensionDownloadUrl = (info, currentVersion) => {
 }
 
 export const mapPlatformToArch = ({ arch, os }) => {
-  if (os === 'mac' || os === 'linux' || os === 'android') {
-    return os
+  if (os === 'mac') {
+    return arch === 'arm64' ? 'macarm64' : arch === 'x86-64' ? 'mac' : undefined
   }
-  if (os === 'win' && arch === 'x86-32') {
-    return 'win32'
+  if (os === 'linux') {
+    return arch === 'x86-64' ? 'linux' : undefined
   }
-  if (os === 'win' && ['x86-64', 'arm64'].includes(arch)) {
-    return 'win64'
+  if (os === 'win') {
+    return arch === 'arm64' ? 'winarm64' : arch === 'x86-64' ? 'win64' : undefined
   }
   return undefined
 }
