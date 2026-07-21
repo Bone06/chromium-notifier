@@ -15,6 +15,7 @@ import {
   getExtensionDownloadUrl,
   getExtensionCapabilities,
   getInstallTypeLabel,
+  getPlatformDisplayName,
   hasExtensionUpdate,
   matchExtension
 } from './core.js'
@@ -31,6 +32,22 @@ const changeBoolSetting = ({ target: { checked, name } }) => {
       checked
         ? { badgeColors: getDefaultBadgeColors(), useCustomColors: true }
         : { badgeColors: null, useCustomColors: false }
+    )
+    return
+  }
+
+  if (name === 'notifySnapshotRevisions' && checked) {
+    chrome.storage.local.get(
+      ['arch', 'snapshotRevisionsSeen', 'tag', 'versions'],
+      ({ arch, snapshotRevisionsSeen = {}, tag, versions = {} }) => {
+        const current = versions[arch]?.find(build => build.tag === tag)
+        chrome.storage.local.set({
+          notifySnapshotRevisions: true,
+          snapshotRevisionsSeen: current?.channel === 'snapshot'
+            ? { ...snapshotRevisionsSeen, [current.id]: current.revision }
+            : snapshotRevisionsSeen
+        })
+      }
     )
     return
   }
@@ -59,7 +76,22 @@ const changePlatform = e =>
     tag: null
   })
 
-const changeTag = e => chrome.storage.local.set({ tag: e.target.value })
+const changeTag = e => {
+  const tag = e.target.value
+  chrome.storage.local.get(
+    ['arch', 'notifySnapshotRevisions', 'snapshotRevisionsSeen', 'versions'],
+    ({ arch, notifySnapshotRevisions, snapshotRevisionsSeen = {}, versions = {} }) => {
+      const current = versions[arch]?.find(build => build.tag === tag)
+      chrome.storage.local.set({
+        snapshotRevisionsSeen: notifySnapshotRevisions &&
+          current?.channel === 'snapshot'
+          ? { ...snapshotRevisionsSeen, [current.id]: current.revision }
+          : snapshotRevisionsSeen,
+        tag
+      })
+    }
+  )
+}
 
 const changeTheme = e =>
   chrome.storage.local.set({ themeMode: e.target.value })
@@ -73,6 +105,7 @@ const ChromiumInfo = ({
   current = {},
   currentVersion,
   lastSuccessAt,
+  notifySnapshotRevisions,
   onCheckNow,
   woolyssDataStale,
   woolyssError
@@ -104,7 +137,10 @@ const ChromiumInfo = ({
         >${checking ? 'Checking…' : 'Check now'}</button>
       </li>
       <li>
-        <span class="muted-label">Revision: </span>${current.revision}
+        <span class="muted-label">Revision: </span><span
+          class="${notifySnapshotRevisions && 'badge'}"
+          >${current.revision}</span
+        >
         (${new Date(current.timestamp * 1000).toLocaleString()})
       </li>
       ${current.links &&
@@ -131,6 +167,14 @@ const ChromiumInfo = ({
               ? new Date(lastSuccessAt).toLocaleString()
               : 'the last successful check'}.
             ${woolyssError}
+          </p>
+        `}
+      ${current.source?.stale &&
+        html`
+          <p aria-live="polite" class="setting-warning">
+            This build source could not be refreshed. Showing cached source
+            data from ${new Date(current.source.lastSuccessAt).toLocaleString()}.
+            ${current.source.error}
           </p>
         `}
       ${versionStatus === 'local-newer' &&
@@ -407,6 +451,7 @@ const Settings = ({
   badgeColors = {},
   current,
   extensionsTrack,
+  notifySnapshotRevisions,
   selectionStatus,
   tag,
   themeMode = 'browser',
@@ -442,13 +487,13 @@ const Settings = ({
           ${selectionStatus === 'platform-unavailable' &&
             html`
               <option disabled selected value="${arch}"
-                >${arch} (unavailable)</option
+                >${getPlatformDisplayName(arch)} (unavailable)</option
               >
             `}
           ${Object.keys(versions).map(
             archOpt => html`
               <option selected="${archOpt === arch}" value="${archOpt}"
-                >${archOpt}</option
+                >${getPlatformDisplayName(archOpt)}</option
               >
             `
           )}
@@ -481,6 +526,19 @@ const Settings = ({
             </small>
           `}
       </label>
+
+      <p style="margin: 1rem 0;">
+        <label>
+          <input
+            checked="${notifySnapshotRevisions}"
+            name="notifySnapshotRevisions"
+            onChange="${changeBoolSetting}"
+            style="margin: 0.25rem 0.25rem 0 0"
+            type="checkbox"
+          />
+          Notify about new snapshot revisions
+        </label>
+      </p>
 
       <p style="margin: 1rem 0;">
         <label>
@@ -656,6 +714,21 @@ class App extends Component {
     if (this.mounted) {
       this.setState(config)
     }
+    const current = config.versions?.[config.arch]?.find(
+      build => build.tag === config.tag
+    )
+    if (
+      config.notifySnapshotRevisions &&
+      current?.channel === 'snapshot' &&
+      current.revision !== config.snapshotRevisionsSeen?.[current.id]
+    ) {
+      await chrome.storage.local.set({
+        snapshotRevisionsSeen: {
+          ...config.snapshotRevisionsSeen,
+          [current.id]: current.revision
+        }
+      })
+    }
   }
 
   componentWillUnmount () {
@@ -672,6 +745,7 @@ class App extends Component {
     {
       arch,
       badgeColors,
+      buildFeedSources = [],
       checking,
       currentVersion,
       extensions,
@@ -684,6 +758,7 @@ class App extends Component {
       lastErrorAt,
       lastSuccessAt,
       managementError,
+      notifySnapshotRevisions,
       pendingExtensionIds,
       self,
       tag,
@@ -713,6 +788,7 @@ class App extends Component {
               current="${current}"
               currentVersion="${currentVersion}"
               lastSuccessAt="${lastSuccessAt}"
+              notifySnapshotRevisions="${notifySnapshotRevisions}"
               onCheckNow="${this.onCheckNow}"
               woolyssDataStale="${woolyssDataStale}"
               woolyssError="${woolyssError}"
@@ -743,6 +819,7 @@ class App extends Component {
           badgeColors="${badgeColors}"
           current="${current}"
           extensionsTrack="${extensionsTrack}"
+          notifySnapshotRevisions="${notifySnapshotRevisions}"
           selectionStatus="${selectionStatus}"
           tag="${tag}"
           themeMode="${themeMode}"
@@ -752,6 +829,13 @@ class App extends Component {
       <//>
 
       <${Section}>
+        ${buildFeedSources.some(source => source.stale) &&
+          html`
+            <small aria-live="polite" class="setting-warning">
+              Some build sources could not be refreshed and are using cached
+              data.
+            </small>
+          `}
         <small class="supplemental-info">
           ${lastAttemptAt
             ? `Last check attempt: ${new Date(lastAttemptAt).toLocaleString()}`

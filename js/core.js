@@ -128,6 +128,14 @@ export const mapPlatformToArch = ({ arch, os }) => {
   return undefined
 }
 
+export const getPlatformDisplayName = platform => ({
+  linux: 'Linux x64 - linux',
+  mac: 'macOS Intel - mac',
+  macarm64: 'macOS Apple Silicon - macarm64',
+  win64: 'Windows x64 - win64',
+  winarm64: 'Windows ARM64 - winarm64'
+})[platform] || platform
+
 const validBrowserVersion = version =>
   typeof version === 'string' && /^\d+(?:\.\d+){0,3}$/.test(version)
 
@@ -465,14 +473,20 @@ export const validateBuildSourcesFeed = response => {
     })
 
     const normalizedBuild = {
+      channel: build.channel,
       displayName: build.displayName || build.tag,
+      id: build.id,
       links,
       releaseUrl: build.releaseUrl,
       revision: build.revision,
       source: {
+        checkedAt: source.checkedAt,
+        error: source.error,
         id: source.id,
+        lastSuccessAt: source.lastSuccessAt,
         name: source.name,
-        repository: source.repository
+        repository: source.repository,
+        stale: source.stale
       },
       tag: build.tag,
       timestamp: publishedAt / 1000,
@@ -530,11 +544,12 @@ export const getBadgeStatus = ({
   extensions = [],
   extensionsInfo = [],
   extensionsTrack = false,
+  snapshotRevisionUpdate = false,
   woolyssError
 }) => {
   const chromiumUpdate =
     getChromiumVersionStatus(currentVersion, availableVersion) ===
-    'update-available'
+      'update-available' || snapshotRevisionUpdate
   const extensionUpdate = Boolean(
     extensionsTrack &&
     extensions.some(extension =>
@@ -576,6 +591,8 @@ export const getBadgePresentation = (
   status,
   {
     badgeColors = {},
+    hasStaleBuildSources = false,
+    snapshotRevisionUpdate = false,
     useCustomColors = false,
     woolyssDataStale = false
   } = {}
@@ -619,8 +636,28 @@ export const getBadgePresentation = (
   return {
     ...presentation,
     color: customColor || presentation.color,
-    title: woolyssDataStale
-      ? `${presentation.title} (latest Chromium check failed; using cached data)`
-      : presentation.title
+    title: [
+      snapshotRevisionUpdate && status === 'chromium'
+        ? 'A new Chromium snapshot revision is available'
+        : presentation.title,
+      woolyssDataStale
+        ? 'Latest Chromium check failed; using cached data'
+        : null,
+      hasStaleBuildSources
+        ? 'Some build sources are using cached data'
+        : null
+    ].filter(Boolean).join(' — ')
   }
 }
+
+export const hasSnapshotRevisionUpdate = ({
+  current,
+  notifySnapshotRevisions = false,
+  snapshotRevisionsSeen = {}
+}) => Boolean(
+  notifySnapshotRevisions &&
+  current?.channel === 'snapshot' &&
+  current.revision &&
+  snapshotRevisionsSeen[current.id] &&
+  Number(current.revision) > Number(snapshotRevisionsSeen[current.id])
+)

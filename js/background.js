@@ -7,6 +7,7 @@ import {
 import {
   getBadgePresentation,
   getBadgeStatus,
+  hasSnapshotRevisionUpdate,
   getWoolyssErrorState,
   getWoolyssSuccessState,
   validateBuildSourcesFeed
@@ -32,7 +33,7 @@ const update = async (...args) => {
   }
 
   const {
-    extensionsTrack,
+    extensionsTrack
   } = config
 
   const buildFeedJob = fetchText(
@@ -122,9 +123,12 @@ chrome.storage.onChanged.addListener(async () => {
   const {
     arch,
     badgeColors,
+    buildFeedSources = [],
     extensions,
     extensionsInfo = [],
     extensionsTrack,
+    notifySnapshotRevisions,
+    snapshotRevisionsSeen,
     tag,
     useCustomColors,
     versions,
@@ -137,6 +141,11 @@ chrome.storage.onChanged.addListener(async () => {
     arch &&
     versions[arch] &&
     versions[arch].find(v => v.tag === tag)
+  const snapshotRevisionUpdate = hasSnapshotRevisionUpdate({
+    current,
+    notifySnapshotRevisions,
+    snapshotRevisionsSeen
+  })
 
   const { uaFullVersion } = await getUserAgentData()
   const badge = getBadgePresentation(
@@ -146,9 +155,16 @@ chrome.storage.onChanged.addListener(async () => {
       extensions,
       extensionsInfo,
       extensionsTrack,
+      snapshotRevisionUpdate,
       woolyssError
     }),
-    { badgeColors, useCustomColors, woolyssDataStale }
+    {
+      badgeColors,
+      hasStaleBuildSources: buildFeedSources.some(source => source.stale),
+      snapshotRevisionUpdate,
+      useCustomColors,
+      woolyssDataStale
+    }
   )
 
   if (woolyssError) {

@@ -18,9 +18,11 @@ import {
   getExtensionDownloadUrl,
   getExtensionCapabilities,
   getInstallTypeLabel,
+  getPlatformDisplayName,
   getWoolyssErrorState,
   getWoolyssSuccessState,
   hasExtensionUpdate,
+  hasSnapshotRevisionUpdate,
   mapPlatformToArch,
   matchExtension,
   migrateStoredConfig,
@@ -235,6 +237,9 @@ test('validateBuildSourcesFeed normalizes the versioned source feed', () => {
     'Hibbiki – Stable – Sync – All Codecs+'
   )
   assert.equal(result.versions.win64[0].source.name, 'Hibbiki/chromium-win64')
+  assert.equal(result.versions.win64[0].source.stale, false)
+  assert.equal(result.versions.win64[0].id, 'hibbiki-win64')
+  assert.equal(result.versions.win64[0].channel, 'stable')
   assert.equal(result.versions.win64[0].timestamp, 1784289600)
 })
 
@@ -517,6 +522,19 @@ test('getBadgeStatus only reports a newer remote Chromium version', () => {
   )
 })
 
+test('snapshot revision notifications require opt-in and a newer revision', () => {
+  const current = { channel: 'snapshot', id: 'snapshot-win64', revision: '12' }
+  assert.equal(hasSnapshotRevisionUpdate({
+    current, notifySnapshotRevisions: false,
+    snapshotRevisionsSeen: { 'snapshot-win64': '11' }
+  }), false)
+  assert.equal(hasSnapshotRevisionUpdate({
+    current, notifySnapshotRevisions: true,
+    snapshotRevisionsSeen: { 'snapshot-win64': '11' }
+  }), true)
+  assert.equal(getBadgeStatus({ snapshotRevisionUpdate: true }), 'chromium')
+})
+
 test('getBadgeStatus keeps known updates visible when a later check fails', () => {
   const state = {
     availableVersion: '150.0.0.1',
@@ -590,7 +608,11 @@ test('getBadgePresentation rejects invalid custom colors and exposes defaults', 
 test('getBadgePresentation marks cached Chromium data in the tooltip', () => {
   assert.equal(
     getBadgePresentation('chromium', { woolyssDataStale: true }).title,
-    'A new Chromium version is available (latest Chromium check failed; using cached data)'
+    'A new Chromium version is available — Latest Chromium check failed; using cached data'
+  )
+  assert.match(
+    getBadgePresentation('none', { hasStaleBuildSources: true }).title,
+    /Some build sources are using cached data/
   )
 })
 
@@ -700,4 +722,13 @@ test('mapPlatformToArch maps supported platforms', () => {
   assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'linux' }), undefined)
   assert.equal(mapPlatformToArch({ arch: 'arm64', os: 'android' }), undefined)
   assert.equal(mapPlatformToArch({ arch: 'x86-64', os: 'cros' }), undefined)
+})
+
+test('getPlatformDisplayName combines friendly and technical names', () => {
+  assert.equal(getPlatformDisplayName('winarm64'), 'Windows ARM64 - winarm64')
+  assert.equal(
+    getPlatformDisplayName('macarm64'),
+    'macOS Apple Silicon - macarm64'
+  )
+  assert.equal(getPlatformDisplayName('future'), 'future')
 })
