@@ -55,6 +55,7 @@ test('background registers listeners, deduplicates checks and isolates extension
     globalThis,
     'navigator'
   )
+  const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto')
   const events = {
     alarm: createEvent(),
     installed: createEvent(),
@@ -87,6 +88,15 @@ test('background registers listeners, deduplicates checks and isolates extension
             version: '150.0.0.0'
           }]
         })
+      }
+    }
+  })
+  Object.defineProperty(globalThis, 'crypto', {
+    configurable: true,
+    value: {
+      subtle: {
+        importKey: async () => ({}),
+        verify: async () => true
       }
     }
   })
@@ -134,6 +144,11 @@ test('background registers listeners, deduplicates checks and isolates extension
     console.debug = originalDebug
     console.error = originalError
     globalThis.fetch = originalFetch
+    if (cryptoDescriptor) {
+      Object.defineProperty(globalThis, 'crypto', cryptoDescriptor)
+    } else {
+      delete globalThis.crypto
+    }
     if (navigatorDescriptor) {
       Object.defineProperty(globalThis, 'navigator', navigatorDescriptor)
     } else {
@@ -147,9 +162,9 @@ test('background registers listeners, deduplicates checks and isolates extension
   assert.equal(events.startup.listeners.length, 1)
   assert.equal(events.storage.listeners.length, 1)
 
-  let resolveFetch
-  fetchImplementation = () => new Promise(resolve => {
-    resolveFetch = resolve
+  const pendingFetches = []
+  fetchImplementation = url => new Promise(resolve => {
+    pendingFetches.push({ resolve, url: String(url) })
   })
   events.alarm.listeners[0]({ name: 'main' })
   const manualResponse = new Promise(resolve => {
@@ -159,8 +174,15 @@ test('background registers listeners, deduplicates checks and isolates extension
     )
   })
   await new Promise(resolve => setImmediate(resolve))
-  assert.equal(fetchCalls, 1)
-  resolveFetch(new Response(JSON.stringify(createBuildFeed('150.0.0.1'))))
+  assert.equal(fetchCalls, 2)
+  pendingFetches.forEach(({ resolve, url }) => resolve(new Response(
+    url.endsWith('.sig')
+      ? JSON.stringify({
+          algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-01',
+          schemaVersion: 1, signature: 'A'.repeat(86)
+        })
+      : JSON.stringify(createBuildFeed('150.0.0.1'))
+  )))
   assert.deepEqual(await manualResponse, { ok: true })
   assert.equal(store.versions.win64[0].version, '150.0.0.1')
 
@@ -169,8 +191,14 @@ test('background registers listeners, deduplicates checks and isolates extension
     type: 'extension',
     updateUrl: 'file:///invalid-update.xml'
   }]
-  fetchImplementation = async () =>
-    new Response(JSON.stringify(createBuildFeed('150.0.0.2')))
+  fetchImplementation = async url => new Response(
+    String(url).endsWith('.sig')
+      ? JSON.stringify({
+          algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-01',
+          schemaVersion: 1, signature: 'A'.repeat(86)
+        })
+      : JSON.stringify(createBuildFeed('150.0.0.2'))
+  )
   const isolatedResponse = new Promise(resolve => {
     events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
   })

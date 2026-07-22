@@ -23,6 +23,7 @@ import {
   getWoolyssSuccessState,
   hasExtensionUpdate,
   hasSnapshotRevisionUpdate,
+  isBuildFeedRollback,
   mapPlatformToArch,
   matchExtension,
   migrateStoredConfig,
@@ -44,7 +45,12 @@ const woolyssResponse = {
 const buildSourceFeed = {
   builds: [{
     architecture: 'x64',
-    capabilities: { official: true },
+    capabilities: {
+      official: true,
+      proprietaryCodecs: true,
+      sync: true,
+      widevine: true
+    },
     channel: 'stable',
     downloads: [{
       label: 'Archive',
@@ -292,6 +298,16 @@ test('validateBuildSourcesFeed rejects unsafe and inconsistent feeds', () => {
     }),
     /downloads\[0\] is invalid/
   )
+})
+
+test('signed feed rollback detection rejects older generations', () => {
+  assert.equal(isBuildFeedRollback(
+    '2026-07-22T12:00:00Z', '2026-07-22T11:59:59Z'
+  ), true)
+  assert.equal(isBuildFeedRollback(
+    '2026-07-22T12:00:00Z', '2026-07-22T12:00:00Z'
+  ), false)
+  assert.equal(isBuildFeedRollback(undefined, '2026-07-22T12:00:00Z'), false)
 })
 
 test('validateWoolyssResponse normalizes numeric platform collections', () => {

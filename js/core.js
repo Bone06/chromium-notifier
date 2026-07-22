@@ -277,6 +277,14 @@ export const getCompactBuildName = displayName => displayName
 const isObject = value =>
   Boolean(value && typeof value === 'object' && !Array.isArray(value))
 
+const hasOnlyKeys = (value, required, optional = []) => {
+  if (!isObject(value)) return false
+  const keys = Object.keys(value)
+  const allowed = new Set([...required, ...optional])
+  return required.every(key => Object.hasOwn(value, key)) &&
+    keys.every(key => allowed.has(key))
+}
+
 export const validateWoolyssResponse = response => {
   if (!isObject(response)) {
     throw new Error('Invalid Woolyss response: expected an object')
@@ -362,11 +370,17 @@ export const validateWoolyssResponse = response => {
 
 const getHttpsUrl = value => {
   const url = getHttpUrl(value)
-  return url?.protocol === 'https:' ? url : null
+  return url?.protocol === 'https:' && !url.username && !url.password &&
+    value.length <= 2048
+    ? url
+    : null
 }
 
 const getIsoTimestamp = (value, location) => {
-  const timestamp = typeof value === 'string' ? Date.parse(value) : NaN
+  const timestamp = typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)
+    ? Date.parse(value)
+    : NaN
   if (!Number.isFinite(timestamp)) {
     throw new Error(`Invalid build source feed: ${location} is invalid`)
   }
@@ -379,7 +393,10 @@ const hasControlCharacters = value => [...value].some(character => {
 })
 
 export const validateBuildSourcesFeed = response => {
-  if (!isObject(response) || response.schemaVersion !== 1) {
+  if (
+    !hasOnlyKeys(response, ['schemaVersion', 'generatedAt', 'sources', 'builds']) ||
+    response.schemaVersion !== 1
+  ) {
     throw new Error('Invalid build source feed: expected schemaVersion 1')
   }
 
@@ -395,14 +412,20 @@ export const validateBuildSourcesFeed = response => {
   response.sources.forEach((source, index) => {
     const location = `sources[${index}]`
     if (
-      !isObject(source) ||
+      !hasOnlyKeys(source, [
+        'id', 'name', 'repository', 'checkedAt', 'lastSuccessAt', 'stale',
+        'error'
+      ]) ||
       typeof source.id !== 'string' ||
       !source.id.trim() ||
       typeof source.name !== 'string' ||
       !source.name.trim() ||
       !getHttpsUrl(source.repository) ||
       typeof source.stale !== 'boolean' ||
-      (source.error !== null && typeof source.error !== 'string')
+      (source.error !== null &&
+        (typeof source.error !== 'string' || !source.error.trim() ||
+          source.error.length > 500 || hasControlCharacters(source.error))) ||
+      source.stale !== Boolean(source.error)
     ) {
       throw new Error(`Invalid build source feed: ${location} is invalid`)
     }
@@ -420,7 +443,10 @@ export const validateBuildSourcesFeed = response => {
     const location = `builds[${index}]`
     const source = isObject(build) ? sources.get(build.sourceId) : null
     if (
-      !isObject(build) ||
+      !hasOnlyKeys(build, [
+        'id', 'sourceId', 'platform', 'architecture', 'tag', 'channel',
+        'version', 'publishedAt', 'releaseUrl', 'capabilities', 'downloads'
+      ], ['displayName', 'revision']) ||
       typeof build.id !== 'string' ||
       !build.id.trim() ||
       typeof build.platform !== 'string' ||
@@ -439,6 +465,10 @@ export const validateBuildSourcesFeed = response => {
       !/^\d+(?:\.\d+){3}$/.test(build.version || '') ||
       (build.revision !== undefined && !/^\d+$/.test(build.revision)) ||
       !source ||
+      !hasOnlyKeys(build.capabilities, [
+        'official', 'proprietaryCodecs', 'sync', 'widevine'
+      ]) ||
+      Object.values(build.capabilities).some(value => typeof value !== 'boolean') ||
       !getHttpsUrl(build.releaseUrl) ||
       !Array.isArray(build.downloads) ||
       !build.downloads.length
@@ -456,14 +486,16 @@ export const validateBuildSourcesFeed = response => {
     )
     const links = build.downloads.map((download, downloadIndex) => {
       if (
-        !isObject(download) ||
+        !hasOnlyKeys(download, ['label', 'name', 'size', 'url'], ['sha256']) ||
         typeof download.label !== 'string' ||
         !download.label.trim() ||
         typeof download.name !== 'string' ||
         !download.name.trim() ||
         !Number.isSafeInteger(download.size) ||
         download.size <= 0 ||
-        !getHttpsUrl(download.url)
+        !getHttpsUrl(download.url) ||
+        (download.sha256 !== undefined &&
+          !/^[a-f0-9]{64}$/.test(download.sha256))
       ) {
         throw new Error(
           `Invalid build source feed: ${location}.downloads[${downloadIndex}] is invalid`
@@ -502,6 +534,13 @@ export const validateBuildSourcesFeed = response => {
     versions
   }
 }
+
+export const isBuildFeedRollback = (previousGeneratedAt, nextGeneratedAt) =>
+  Boolean(
+    previousGeneratedAt &&
+    Number.isFinite(Date.parse(previousGeneratedAt)) &&
+    Date.parse(nextGeneratedAt) < Date.parse(previousGeneratedAt)
+  )
 
 export const getWoolyssSuccessState = (versions, now = Date.now()) => ({
   error: null,

@@ -10,11 +10,14 @@ import {
   hasSnapshotRevisionUpdate,
   getWoolyssErrorState,
   getWoolyssSuccessState,
+  isBuildFeedRollback,
   validateBuildSourcesFeed
 } from './core.js'
+import { verifySignedBuildFeed } from './feed-signature.js'
 
 const ALARM_NAME = 'main'
 const BUILD_FEED_URL = 'http://127.0.0.1:8787/versions.json'
+const BUILD_FEED_SIGNATURE_URL = `${BUILD_FEED_URL}.sig`
 let currentUpdate
 
 const update = async (...args) => {
@@ -36,13 +39,16 @@ const update = async (...args) => {
     extensionsTrack
   } = config
 
-  const buildFeedJob = fetchText(
-    BUILD_FEED_URL,
-    {},
-    { label: 'Chromium build source feed' }
-  )
-      .then(text => {
+  const buildFeedJob = Promise.all([
+    fetchText(BUILD_FEED_URL, {}, { label: 'Chromium build source feed' }),
+    fetchText(BUILD_FEED_SIGNATURE_URL, {}, {
+      label: 'Chromium build source feed signature',
+      maxResponseBytes: 4096
+    })
+  ])
+      .then(async ([text, signatureText]) => {
         try {
+          await verifySignedBuildFeed(text, signatureText)
           const json = JSON.parse(text)
           return json
         } catch (error) {
@@ -74,6 +80,9 @@ const update = async (...args) => {
     const { generatedAt, sources, versions } = validateBuildSourcesFeed(
       buildFeedResult.value
     )
+    if (isBuildFeedRollback(config.buildFeedGeneratedAt, generatedAt)) {
+      throw new Error('Signed build source feed is older than the cached feed')
+    }
     newState = {
       ...getWoolyssSuccessState(versions, now),
       buildFeedGeneratedAt: generatedAt,
