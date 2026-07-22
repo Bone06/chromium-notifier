@@ -16,7 +16,7 @@
       "256": "img/icon_256.png"
     }
   },
-  "description": "Chromium browser extension that provides browser and extensions update notifications and extensions management functionality. Chromium versions are synced with Woolyss' Website.",
+  "description": "Chromium browser and extension update notifications with signed multi-source build data and extension management.",
   "icons": {
     "16": "img/icon_16.png",
     "24": "img/icon_24.png",
