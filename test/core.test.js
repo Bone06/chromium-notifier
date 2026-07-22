@@ -19,8 +19,8 @@ import {
   getExtensionCapabilities,
   getInstallTypeLabel,
   getPlatformDisplayName,
-  getWoolyssErrorState,
-  getWoolyssSuccessState,
+  getBuildFeedErrorState,
+  getBuildFeedSuccessState,
   hasExtensionUpdate,
   hasSnapshotRevisionUpdate,
   isBuildFeedRollback,
@@ -28,11 +28,10 @@ import {
   matchExtension,
   migrateStoredConfig,
   parseUpdateManifest,
-  validateBuildSourcesFeed,
-  validateWoolyssResponse
+  validateBuildSourcesFeed
 } from '../js/core.js'
 
-const woolyssResponse = {
+const versionsFixture = {
   win64: [{
     links: [{ label: 'Archive', url: 'https://example.test/chromium.zip' }],
     revision: '1234567',
@@ -224,14 +223,6 @@ test('getBuildSelectionStatus distinguishes incomplete and unloaded state', () =
   )
 })
 
-test('validateWoolyssResponse accepts platform build data', () => {
-  assert.deepEqual(validateWoolyssResponse(woolyssResponse), woolyssResponse)
-  assert.deepEqual(
-    validateWoolyssResponse({ ...woolyssResponse, error: null }),
-    woolyssResponse
-  )
-})
-
 test('validateBuildSourcesFeed normalizes the versioned source feed', () => {
   const result = validateBuildSourcesFeed(buildSourceFeed)
 
@@ -310,74 +301,20 @@ test('signed feed rollback detection rejects older generations', () => {
   assert.equal(isBuildFeedRollback(undefined, '2026-07-22T12:00:00Z'), false)
 })
 
-test('validateWoolyssResponse normalizes numeric platform collections', () => {
-  const androidBuild = {
-    tag: 'dev-official',
-    version: '152.0.7955.0'
-  }
-
-  assert.deepEqual(
-    validateWoolyssResponse({ android: { 0: androidBuild } }),
-    { android: [androidBuild] }
-  )
-})
-
-test('validateWoolyssResponse rejects API errors and invalid roots', () => {
-  assert.throws(
-    () => validateWoolyssResponse(null),
-    /expected an object/
-  )
-  assert.throws(
-    () => validateWoolyssResponse({ error: 'temporarily unavailable' }),
-    /temporarily unavailable/
-  )
-  assert.throws(
-    () => validateWoolyssResponse({}),
-    /no platforms found/
-  )
-})
-
-test('validateWoolyssResponse rejects malformed builds and links', () => {
-  assert.throws(
-    () => validateWoolyssResponse({ win64: {} }),
-    /build list/
-  )
-  assert.throws(
-    () => validateWoolyssResponse({ win64: [{ tag: 'stable' }] }),
-    /version is invalid/
-  )
-  assert.throws(
-    () => validateWoolyssResponse({
-      win64: [{ tag: 'stable', version: '150.0', timestamp: 'today' }]
-    }),
-    /timestamp is invalid/
-  )
-  assert.throws(
-    () => validateWoolyssResponse({
-      win64: [{
-        links: [{ label: 'Unsafe', url: 'javascript:alert(1)' }],
-        tag: 'stable',
-        version: '150.0'
-      }]
-    }),
-    /links\[0\] is invalid/
-  )
-})
-
-test('Woolyss state transitions track attempts and preserve cached data', () => {
-  assert.deepEqual(getWoolyssSuccessState(woolyssResponse, 1000), {
+test('build feed state transitions track attempts and preserve cached data', () => {
+  assert.deepEqual(getBuildFeedSuccessState(versionsFixture, 1000), {
     error: null,
     lastAttemptAt: 1000,
     lastErrorAt: null,
     lastSuccessAt: 1000,
     timestamp: 1000,
-    versions: woolyssResponse,
+    versions: versionsFixture,
     woolyssDataStale: false,
     woolyssError: null
   })
 
-  const failed = getWoolyssErrorState(
-    { lastSuccessAt: 1000, versions: woolyssResponse },
+  const failed = getBuildFeedErrorState(
+    { lastSuccessAt: 1000, versions: versionsFixture },
     new Error('network failed'),
     2000
   )
@@ -391,7 +328,7 @@ test('Woolyss state transitions track attempts and preserve cached data', () => 
   })
   assert.equal(Object.hasOwn(failed, 'versions'), false)
   assert.equal(
-    getWoolyssErrorState({}, new Error('first check failed'), 2000)
+    getBuildFeedErrorState({}, new Error('first check failed'), 2000)
       .woolyssDataStale,
     false
   )
@@ -403,7 +340,7 @@ test('migrateStoredConfig upgrades legacy successful state', () => {
     migrateStoredConfig({
       arch: 'win64',
       timestamp: 1000,
-      versions: woolyssResponse
+      versions: versionsFixture
     }),
     {
       arch: 'win64',
@@ -412,7 +349,7 @@ test('migrateStoredConfig upgrades legacy successful state', () => {
       lastSuccessAt: 1000,
       schemaVersion: 1,
       timestamp: 1000,
-      versions: woolyssResponse
+      versions: versionsFixture
     }
   )
 })
@@ -422,14 +359,14 @@ test('migrateStoredConfig preserves legacy error and cached data semantics', () 
     migrateStoredConfig({
       error: 'offline',
       timestamp: 2000,
-      versions: woolyssResponse
+      versions: versionsFixture
     }),
     {
       error: null,
       lastAttemptAt: 2000,
       schemaVersion: 1,
       timestamp: 2000,
-      versions: woolyssResponse,
+      versions: versionsFixture,
       woolyssDataStale: true,
       woolyssError: 'offline'
     }

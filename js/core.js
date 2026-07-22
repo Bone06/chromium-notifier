@@ -285,89 +285,6 @@ const hasOnlyKeys = (value, required, optional = []) => {
     keys.every(key => allowed.has(key))
 }
 
-export const validateWoolyssResponse = response => {
-  if (!isObject(response)) {
-    throw new Error('Invalid Woolyss response: expected an object')
-  }
-  if (response.error) {
-    throw new Error(`Woolyss API: ${response.error}`)
-  }
-
-  const responseVersions = Object.fromEntries(
-    Object.entries(response).filter(([key]) => key !== 'error')
-  )
-
-  if (!Object.keys(responseVersions).length) {
-    throw new Error('Invalid Woolyss response: no platforms found')
-  }
-
-  const versions = Object.fromEntries(
-    Object.entries(responseVersions).map(([platform, buildCollection]) => {
-      const collectionKeys = isObject(buildCollection)
-        ? Object.keys(buildCollection)
-        : []
-      const builds = Array.isArray(buildCollection)
-        ? buildCollection
-        : isObject(buildCollection) &&
-          collectionKeys.length > 0 &&
-          collectionKeys.every(key => /^\d+$/.test(key))
-        ? Object.values(buildCollection)
-        : null
-
-      if (!builds) {
-        throw new Error(
-          `Invalid Woolyss response: ${platform} must contain a build list`
-        )
-      }
-
-      builds.forEach((build, index) => {
-        const location = `${platform}[${index}]`
-        if (!isObject(build)) {
-          throw new Error(`Invalid Woolyss response: ${location} is not a build`)
-        }
-        if (typeof build.tag !== 'string' || !build.tag.trim()) {
-          throw new Error(`Invalid Woolyss response: ${location}.tag is missing`)
-        }
-        if (!/^\d+(?:\.\d+)*$/.test(build.version || '')) {
-          throw new Error(
-            `Invalid Woolyss response: ${location}.version is invalid`
-          )
-        }
-        if (
-          build.timestamp !== undefined &&
-          (typeof build.timestamp !== 'number' ||
-            !Number.isFinite(build.timestamp))
-        ) {
-          throw new Error(
-            `Invalid Woolyss response: ${location}.timestamp is invalid`
-          )
-        }
-        if (build.links !== undefined && !Array.isArray(build.links)) {
-          throw new Error(
-            `Invalid Woolyss response: ${location}.links is invalid`
-          )
-        }
-        build.links?.forEach((link, linkIndex) => {
-          if (
-            !isObject(link) ||
-            typeof link.label !== 'string' ||
-            !link.label.trim() ||
-            !getHttpUrl(link.url)
-          ) {
-            throw new Error(
-              `Invalid Woolyss response: ${location}.links[${linkIndex}] is invalid`
-            )
-          }
-        })
-      })
-
-      return [platform, builds]
-    })
-  )
-
-  return versions
-}
-
 const getHttpsUrl = value => {
   const url = getHttpUrl(value)
   return url?.protocol === 'https:' && !url.username && !url.password &&
@@ -542,7 +459,7 @@ export const isBuildFeedRollback = (previousGeneratedAt, nextGeneratedAt) =>
     Date.parse(nextGeneratedAt) < Date.parse(previousGeneratedAt)
   )
 
-export const getWoolyssSuccessState = (versions, now = Date.now()) => ({
+export const getBuildFeedSuccessState = (versions, now = Date.now()) => ({
   error: null,
   lastAttemptAt: now,
   lastErrorAt: null,
@@ -553,7 +470,7 @@ export const getWoolyssSuccessState = (versions, now = Date.now()) => ({
   woolyssError: null
 })
 
-export const getWoolyssErrorState = (
+export const getBuildFeedErrorState = (
   previousState,
   error,
   now = Date.now()

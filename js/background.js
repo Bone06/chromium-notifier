@@ -8,8 +8,8 @@ import {
   getBadgePresentation,
   getBadgeStatus,
   hasSnapshotRevisionUpdate,
-  getWoolyssErrorState,
-  getWoolyssSuccessState,
+  getBuildFeedErrorState,
+  getBuildFeedSuccessState,
   isBuildFeedRollback,
   validateBuildSourcesFeed
 } from './core.js'
@@ -29,7 +29,7 @@ const update = async (...args) => {
   if (!navigator.onLine) {
     const error = new Error('Browser is offline')
     console.debug(`We're not online, aborting.`, config)
-    await chrome.storage.local.set(getWoolyssErrorState(config, error, now))
+    await chrome.storage.local.set(getBuildFeedErrorState(config, error, now))
     return
   } else {
     console.debug('updating', config)
@@ -84,13 +84,13 @@ const update = async (...args) => {
       throw new Error('Signed build source feed is older than the cached feed')
     }
     newState = {
-      ...getWoolyssSuccessState(versions, now),
+      ...getBuildFeedSuccessState(versions, now),
       buildFeedGeneratedAt: generatedAt,
       buildFeedSources: sources
     }
   } catch (error) {
     console.error(error)
-    newState = getWoolyssErrorState(config, error, now)
+    newState = getBuildFeedErrorState(config, error, now)
   }
 
   if (extensionResult.status === 'fulfilled' && extensionResult.value) {
