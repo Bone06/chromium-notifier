@@ -15,9 +15,9 @@ management where Chromium permits it.
   directly from Woolyss or individual build repositories.
 - Feed bytes are verified with an embedded ECDSA P-256 public key before JSON
   parsing and strict schema validation.
-- The signed production feed is available over HTTPS, but the extension still
-  uses its loopback development endpoint until the production switch and final
-  release tests are completed.
+- The extension uses the signed production HTTPS feed and revalidates it with
+  ETag / `If-None-Match`; unchanged `304` responses retain the previously
+  verified local cache.
 - The published CRX and `gupdate.xml` still refer to 2.0.0. Update them only
   after the 3.0.0 package has been signed and tested as an upgrade.
 
@@ -31,7 +31,8 @@ management where Chromium permits it.
 - enable, disable and remove extension actions where allowed;
 - custom badge colors;
 - light, dark and browser-default popup themes;
-- cached data and per-source stale/error reporting.
+- cached data and per-source stale/error reporting;
+- conditional ETag feed requests to avoid downloading unchanged metadata.
 
 Tracking arbitrary extension update servers requires the broad HTTP/HTTPS host
 permissions declared in `manifest.json`. This is an intentional compatibility

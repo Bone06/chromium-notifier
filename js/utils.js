@@ -52,10 +52,11 @@ const readResponseText = async (response, label, maxResponseBytes) => {
   }
 }
 
-export const fetchText = async (
+export const fetchTextResponse = async (
   input,
   init = {},
   {
+    allowNotModified = false,
     label = 'Request',
     maxResponseBytes = MAX_REMOTE_RESPONSE_BYTES,
     timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
@@ -67,10 +68,23 @@ export const fetchText = async (
 
   try {
     const response = await fetch(input, { ...init, signal: controller.signal })
+    if (allowNotModified && response.status === 304) {
+      return {
+        etag: response.headers.get('etag'),
+        notModified: true,
+        status: response.status,
+        text: null
+      }
+    }
     if (!response.ok) {
       throw new Error(`${label} failed (${response.status})`)
     }
-    return await readResponseText(response, label, maxResponseBytes)
+    return {
+      etag: response.headers.get('etag'),
+      notModified: false,
+      status: response.status,
+      text: await readResponseText(response, label, maxResponseBytes)
+    }
   } catch (error) {
     if (controller.signal.aborted) {
       throw timeoutError
@@ -80,6 +94,9 @@ export const fetchText = async (
     clearTimeout(timeout)
   }
 }
+
+export const fetchText = async (input, init, options) =>
+  (await fetchTextResponse(input, init, options)).text
 
 export const getSelf = () =>
   new Promise(resolve => chrome.management.get(chrome.runtime.id, resolve))

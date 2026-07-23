@@ -174,37 +174,65 @@ test('background registers listeners, deduplicates checks and isolates extension
     )
   })
   await new Promise(resolve => setImmediate(resolve))
+  assert.equal(fetchCalls, 1)
+  assert.equal(
+    pendingFetches[0].url,
+    'https://bone06.ddns.net/chromium/versions.json'
+  )
+  pendingFetches[0].resolve(new Response(
+    JSON.stringify(createBuildFeed('150.0.0.1')),
+    { headers: { etag: '"feed-1"' } }
+  ))
+  await new Promise(resolve => setImmediate(resolve))
   assert.equal(fetchCalls, 2)
-  pendingFetches.forEach(({ resolve, url }) => resolve(new Response(
-    url.endsWith('.sig')
-      ? JSON.stringify({
-          algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-01',
-          schemaVersion: 1, signature: 'A'.repeat(86)
-        })
-      : JSON.stringify(createBuildFeed('150.0.0.1'))
-  )))
+  assert.equal(
+    pendingFetches[1].url,
+    'https://bone06.ddns.net/chromium/versions.json.sig'
+  )
+  pendingFetches[1].resolve(new Response(JSON.stringify({
+    algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-01',
+    schemaVersion: 1, signature: 'A'.repeat(86)
+  })))
   assert.deepEqual(await manualResponse, { ok: true })
   assert.equal(store.versions.win64[0].version, '150.0.0.1')
+  assert.equal(store.buildFeedEtag, '"feed-1"')
 
   extensions = [{
     id: 'broken',
     type: 'extension',
     updateUrl: 'file:///invalid-update.xml'
   }]
-  fetchImplementation = async url => new Response(
-    String(url).endsWith('.sig')
-      ? JSON.stringify({
+  fetchImplementation = async url => String(url).endsWith('.sig')
+    ? new Response(JSON.stringify({
           algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-01',
           schemaVersion: 1, signature: 'A'.repeat(86)
-        })
-      : JSON.stringify(createBuildFeed('150.0.0.2'))
-  )
+        }))
+    : new Response(JSON.stringify(createBuildFeed('150.0.0.2')), {
+        headers: { etag: '"feed-2"' }
+      })
   const isolatedResponse = new Promise(resolve => {
     events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
   })
   assert.deepEqual(await isolatedResponse, { ok: true })
   assert.equal(store.versions.win64[0].version, '150.0.0.2')
+  assert.equal(store.buildFeedEtag, '"feed-2"')
   assert.match(store.extensionsGeneralError, /Invalid extension update URL/)
+
+  extensions = []
+  const fetchesBeforeNotModified = fetchCalls
+  let conditionalHeader
+  fetchImplementation = async (_url, init) => {
+    conditionalHeader = new Headers(init.headers).get('if-none-match')
+    return new Response(null, { status: 304 })
+  }
+  const notModifiedResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await notModifiedResponse, { ok: true })
+  assert.equal(fetchCalls, fetchesBeforeNotModified + 1)
+  assert.equal(conditionalHeader, '"feed-2"')
+  assert.equal(store.versions.win64[0].version, '150.0.0.2')
+  assert.equal(store.woolyssError, null)
 
   await events.storage.listeners[0]({}, 'local')
   assert.ok(actionCalls.some(([type]) => type === 'text'))
