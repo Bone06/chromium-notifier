@@ -15,8 +15,9 @@ management where Chromium permits it.
   directly from Woolyss or individual build repositories.
 - Feed bytes are verified with an embedded ECDSA P-256 public key before JSON
   parsing and strict schema validation.
-- The development endpoint is currently a loopback server. Permanent HTTPS
-  hosting and the final release package are not configured yet.
+- The signed production feed is available over HTTPS, but the extension still
+  uses its loopback development endpoint until the production switch and final
+  release tests are completed.
 - The published CRX and `gupdate.xml` still refer to 2.0.0. Update them only
   after the 3.0.0 package has been signed and tested as an upgrade.
 
