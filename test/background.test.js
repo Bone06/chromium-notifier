@@ -118,7 +118,7 @@ test('background registers listeners, deduplicates checks and isolates extension
       onAlarm: events.alarm
     },
     management: {
-      get: (id, callback) => callback({ id, type: 'extension', version: '3.0.0' }),
+      get: (id, callback) => callback({ id, type: 'extension', version: '4.0.0' }),
       getAll: callback => callback(extensions)
     },
     runtime: {

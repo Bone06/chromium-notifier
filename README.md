@@ -10,7 +10,7 @@ management where Chromium permits it.
 
 ## Current development status
 
-- The source tree is the unreleased Manifest V3 version 3.0.0.
+- The source tree is the unreleased Manifest V3 version 4.0.0.
 - Build data comes from the separate Chromium Build Sources aggregator, not
   directly from Woolyss or individual build repositories.
 - Feed bytes are verified with an embedded ECDSA P-256 public key before JSON
@@ -19,7 +19,7 @@ management where Chromium permits it.
   ETag / `If-None-Match`; unchanged `304` responses retain the previously
   verified local cache.
 - The published CRX and `gupdate.xml` still refer to 2.0.0. Update them only
-  after the 3.0.0 package has been signed and tested as an upgrade.
+  after the 4.0.0 package has been signed and tested as an upgrade.
 
 ## Features
 
@@ -40,7 +40,7 @@ trade-off and must be reviewed before distribution.
 
 ## Installation
 
-The links below still point to the last published release until 3.0.0 is ready.
+The links below still point to the last published release until 4.0.0 is ready.
 
 1. Review the source code.
 2. Download the [.crx file from the latest release](https://github.com/kkkrist/chromium-notifier/releases/latest/download/chromium-notifier.crx).
@@ -76,7 +76,7 @@ npm run check
 Runtime JavaScript and third-party UI libraries are bundled locally. npm
 dependencies are development tools and are not loaded by the extension.
 
-A current screenshot should be captured from the final signed 3.0.0 package
+A current screenshot should be captured from the final signed 4.0.0 package
 before release.
 
 ## Historical upstream notice
