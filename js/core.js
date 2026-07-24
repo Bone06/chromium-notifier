@@ -547,7 +547,7 @@ export const getBadgePresentation = (
   status,
   {
     badgeColors = {},
-    hasStaleBuildSources = false,
+    hasStaleBuildSource = false,
     snapshotRevisionUpdate = false,
     useCustomColors = false,
     woolyssDataStale = false
@@ -599,8 +599,8 @@ export const getBadgePresentation = (
       woolyssDataStale
         ? 'Latest Chromium check failed; using cached data'
         : null,
-      hasStaleBuildSources
-        ? 'Some build sources are using cached data'
+      hasStaleBuildSource
+        ? 'The selected build source is using cached data'
         : null
     ].filter(Boolean).join(' — ')
   }

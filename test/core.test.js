@@ -564,8 +564,8 @@ test('getBadgePresentation marks cached Chromium data in the tooltip', () => {
     'A new Chromium version is available — Latest Chromium check failed; using cached data'
   )
   assert.match(
-    getBadgePresentation('none', { hasStaleBuildSources: true }).title,
-    /Some build sources are using cached data/
+    getBadgePresentation('none', { hasStaleBuildSource: true }).title,
+    /selected build source is using cached data/
   )
 })
 

@@ -167,7 +167,6 @@ chrome.storage.onChanged.addListener(async () => {
   const {
     arch,
     badgeColors,
-    buildFeedSources = [],
     extensions,
     extensionsInfo = [],
     extensionsTrack,
@@ -204,7 +203,7 @@ chrome.storage.onChanged.addListener(async () => {
     }),
     {
       badgeColors,
-      hasStaleBuildSources: buildFeedSources.some(source => source.stale),
+      hasStaleBuildSource: current?.source?.stale === true,
       snapshotRevisionUpdate,
       useCustomColors,
       woolyssDataStale

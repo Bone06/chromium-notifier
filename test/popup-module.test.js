@@ -23,6 +23,13 @@ test('popup identifies custom colors as badge colors', async () => {
   assert.match(source, /Use custom badge colors/)
 })
 
+test('popup only warns when the selected build source is stale', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(source, /current\?\.source\?\.stale/)
+  assert.match(source, /The selected build source could not be refreshed/)
+  assert.doesNotMatch(source, /buildFeedSources\.some/)
+})
+
 test('popup guards asynchronous initialization and local storage changes', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /if \(areaName !== 'local'\)/)

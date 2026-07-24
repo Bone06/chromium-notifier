@@ -745,7 +745,6 @@ class App extends Component {
     {
       arch,
       badgeColors,
-      buildFeedSources = [],
       checking,
       currentVersion,
       extensions,
@@ -829,11 +828,11 @@ class App extends Component {
       <//>
 
       <${Section}>
-        ${buildFeedSources.some(source => source.stale) &&
+        ${current?.source?.stale &&
           html`
             <small aria-live="polite" class="setting-warning">
-              Some build sources could not be refreshed and are using cached
-              data.
+              The selected build source could not be refreshed and is using
+              cached data.
             </small>
           `}
         <small class="supplemental-info">
