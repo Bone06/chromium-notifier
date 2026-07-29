@@ -21,6 +21,8 @@ import {
 } from './core.js'
 
 const html = htm.bind(h)
+const BUILD_SOURCES_PROJECT_URL =
+  'https://github.com/OWNER/chromium-build-sources'
 
 /*
  * Event handlers
@@ -189,7 +191,7 @@ const ChromiumInfo = ({
             Chromium versions could not be compared.
           </p>
         `}
-      <span>Source </span>
+      <span>Tracking </span>
       <a
         href="${current.releaseUrl}"
         rel="noopener noreferrer"
@@ -393,7 +395,7 @@ const ExtensionsInfo = ({
   `
 }
 
-const Header = ({ source, version }) => html`
+const Header = ({ version }) => html`
   <div>
     <div>
       <p class="header-title">
@@ -401,16 +403,12 @@ const Header = ({ source, version }) => html`
         <code class="muted-label">${version && `v${version}`}</code>
       </p>
       <div class="supplemental-info">
-        <span>build data from </span>
-        ${source
-          ? html`
-              <a
-                href="${source.repository}"
-                rel="noopener noreferrer"
-                target="_blank"
-              >${source.name}</a>
-            `
-          : 'local source feed'}
+        <span>Powered by </span>
+        <a
+          href="${BUILD_SOURCES_PROJECT_URL}"
+          rel="noopener noreferrer"
+          target="_blank"
+        >Chromium Build Sources</a>
       </div>
     </div>
     <div class="header-cell">
@@ -774,7 +772,7 @@ class App extends Component {
 
     return html`
       <${Section}>
-        <${Header} source="${current?.source}" version="${self && self.version}"/>
+        <${Header} version="${self && self.version}"/>
       <//>
 
       ${arch &&

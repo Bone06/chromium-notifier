@@ -23,6 +23,17 @@ test('popup identifies custom colors as badge colors', async () => {
   assert.match(source, /Use custom badge colors/)
 })
 
+test('popup credits the build data project and labels the tracked build', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(source, /<span>Powered by <\/span>/)
+  assert.match(source, />Chromium Build Sources<\/a>/)
+  assert.match(source, /<span>Tracking <\/span>/)
+  assert.match(
+    source,
+    /https:\/\/github\.com\/OWNER\/chromium-build-sources/
+  )
+})
+
 test('popup only warns when the selected build source is stale', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /current\?\.source\?\.stale/)
