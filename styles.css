@@ -194,9 +194,15 @@ button.check-now {
   border: 0;
   color: var(--link);
   cursor: pointer;
-  font: inherit;
-  margin-left: 2rem;
-  padding: 0;
+  float: right;
+  font-family: inherit;
+  font-size: 0.85em;
+  line-height: inherit;
+  margin: 0 0 0 1rem;
+  min-width: 7.5rem;
+  padding: 0 0.45rem;
+  position: relative;
+  top: 0.15em;
 }
 
 .badge {

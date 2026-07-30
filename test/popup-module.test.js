@@ -18,6 +18,34 @@ test('popup keeps spacing between the Chromium label and version', async () => {
   assert.match(source, /<span>Chromium <\/span>\s*<code>/)
 })
 
+test('popup keeps the update check beside the installed Chromium version', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  const summary = source.match(/<summary>\s*<span>Chromium[\s\S]*?<\/summary>/)?.[0]
+  assert.match(summary, /Check for Updates/)
+  assert.match(summary, /class="check-now"/)
+  assert.match(source, /event\.preventDefault\(\)/)
+  assert.match(source, /event\.stopPropagation\(\)/)
+  assert.doesNotMatch(source, />Check now</)
+  assert.match(styles, /button\.check-now[\s\S]*?float: right;/)
+  assert.match(styles, /button\.check-now[\s\S]*?font-size: 0\.85em;/)
+})
+
+test('manual update checks open Chromium details when an update is available', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(source, /response\?\.ok &&\s*getChromiumVersionStatus\(/)
+  assert.match(source, /chromiumOpenRequest \+ 1/)
+  assert.match(source, /key="\$\{chromiumOpenRequest\}"/)
+})
+
+test('popup keeps spacing between the revision and its timestamp', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(
+    source,
+    /\$\{current\.revision\}<\/span\s*>\$\{' '\}\(\$\{new Date/
+  )
+})
+
 test('popup identifies custom colors as badge colors', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /Use custom badge colors/)

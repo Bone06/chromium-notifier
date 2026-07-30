@@ -104,6 +104,7 @@ const changeTheme = e =>
 
 const ChromiumInfo = ({
   checking,
+  chromiumOpenRequest,
   current = {},
   currentVersion,
   lastSuccessAt,
@@ -116,12 +117,28 @@ const ChromiumInfo = ({
     currentVersion,
     current.version
   )
+  const checkForUpdates = event => {
+    event.preventDefault()
+    event.stopPropagation()
+    onCheckNow()
+  }
 
   return html`
-  <details open="${versionStatus === 'update-available'}">
+  <details
+    key="${chromiumOpenRequest}"
+    open="${versionStatus === 'update-available'}"
+  >
     <summary>
       <span>Chromium </span>
       <code>${currentVersion ? `v${currentVersion}` : 'version unavailable'}</code>
+      <button
+        aria-busy="${checking}"
+        aria-live="polite"
+        class="check-now"
+        disabled="${checking}"
+        onClick="${checkForUpdates}"
+        type="button"
+      >${checking ? 'Checking…' : 'Check for Updates'}</button>
     </summary>
     <ul>
       <li>
@@ -129,21 +146,12 @@ const ChromiumInfo = ({
         <code class="${versionStatus === 'update-available' && 'badge'}"
           >v${current.version}</code
         >
-        <button
-          aria-busy="${checking}"
-          aria-live="polite"
-          class="check-now"
-          disabled="${checking}"
-          onClick="${onCheckNow}"
-          type="button"
-        >${checking ? 'Checking…' : 'Check now'}</button>
       </li>
       <li>
         <span class="muted-label">Revision: </span><span
           class="${notifySnapshotRevisions && 'badge'}"
           >${current.revision}</span
-        >
-        (${new Date(current.timestamp * 1000).toLocaleString()})
+        >${' '}(${new Date(current.timestamp * 1000).toLocaleString()})
       </li>
       ${current.links &&
         html`
@@ -614,6 +622,7 @@ class App extends Component {
 
   state = {
     checking: false,
+    chromiumOpenRequest: 0,
     badgeColors: {},
     extensions: [],
     extensionsErrors: [],
@@ -628,11 +637,30 @@ class App extends Component {
 
   onCheckNow = () => {
     this.setState({ checking: true })
-    chrome.runtime.sendMessage({ type: 'check-now' }, () => {
+    chrome.runtime.sendMessage({ type: 'check-now' }, async response => {
       if (chrome.runtime.lastError) {
         console.error(chrome.runtime.lastError)
       }
-      this.setState({ checking: false })
+
+      const config = await getConfig()
+      const current = config.versions?.[config.arch]?.find(
+        build => build.tag === config.tag
+      )
+      const updateAvailable =
+        response?.ok &&
+        getChromiumVersionStatus(
+          config.currentVersion,
+          current?.version
+        ) === 'update-available'
+
+      if (this.mounted) {
+        this.setState(({ chromiumOpenRequest }) => ({
+          checking: false,
+          chromiumOpenRequest: updateAvailable
+            ? chromiumOpenRequest + 1
+            : chromiumOpenRequest
+        }))
+      }
     })
   }
 
@@ -744,6 +772,7 @@ class App extends Component {
       arch,
       badgeColors,
       checking,
+      chromiumOpenRequest,
       currentVersion,
       extensions,
       extensionsErrors,
@@ -782,6 +811,7 @@ class App extends Component {
           <${Section}>
             <${ChromiumInfo}
               checking="${checking}"
+              chromiumOpenRequest="${chromiumOpenRequest}"
               current="${current}"
               currentVersion="${currentVersion}"
               lastSuccessAt="${lastSuccessAt}"
