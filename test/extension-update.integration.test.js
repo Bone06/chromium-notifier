@@ -7,6 +7,18 @@ import {
   fetchExtensionsInfo
 } from '../js/utils.js'
 
+const fetchLocalExtensionInfo = (updateUrl, ids, prodversion, options = {}) =>
+  fetchExtensionInfo(updateUrl, ids, prodversion, {
+    ...options,
+    allowPrivateNetwork: true
+  })
+
+const fetchLocalExtensionsInfo = (extensions, prodversion, options = {}) =>
+  fetchExtensionsInfo(extensions, prodversion, {
+    ...options,
+    allowPrivateNetwork: true
+  })
+
 const startServer = async () => {
   const requests = []
   const server = createServer((request, response) => {
@@ -96,7 +108,7 @@ test('fetchExtensionInfo performs a real HTTP update check for multiple ids', as
   const fixture = await startServer()
   t.after(fixture.close)
 
-  const result = await fetchExtensionInfo(
+  const result = await fetchLocalExtensionInfo(
     `${fixture.baseUrl}/updates?channel=stable`,
     ['outdated-extension', 'current-extension'],
     '120.0.0.0'
@@ -119,20 +131,34 @@ test('fetchExtensionInfo performs a real HTTP update check for multiple ids', as
   ])
 })
 
-test('fetchExtensionInfo follows redirects', async t => {
+test('fetchExtensionInfo blocks loopback update servers by default', async t => {
   const fixture = await startServer()
   t.after(fixture.close)
 
-  const [result] = await fetchExtensionInfo(
-    `${fixture.baseUrl}/redirect`,
-    ['redirected-extension'],
-    '120.0.0.0'
+  await assert.rejects(
+    fetchExtensionInfo(
+      `${fixture.baseUrl}/updates`,
+      ['extension'],
+      '120.0.0.0'
+    ),
+    /Invalid extension update URL/
   )
+  assert.equal(fixture.requests.length, 0)
+})
 
-  assert.equal(result.id, 'redirected-extension')
-  assert.equal(result.version, '2.0.0')
-  assert.equal(fixture.requests.length, 2)
-  assert.equal(fixture.requests[1].searchParams.get('redirected'), 'true')
+test('fetchExtensionInfo rejects redirects by default', async t => {
+  const fixture = await startServer()
+  t.after(fixture.close)
+
+  await assert.rejects(
+    fetchLocalExtensionInfo(
+      `${fixture.baseUrl}/redirect`,
+      ['redirected-extension'],
+      '120.0.0.0'
+    ),
+    /fetch|redirect/i
+  )
+  assert.equal(fixture.requests.length, 1)
 })
 
 test('fetchExtensionInfo rejects HTTP and invalid XML responses', async t => {
@@ -140,11 +166,11 @@ test('fetchExtensionInfo rejects HTTP and invalid XML responses', async t => {
   t.after(fixture.close)
 
   await assert.rejects(
-    fetchExtensionInfo(`${fixture.baseUrl}/error`, ['one'], '120.0.0.0'),
+    fetchLocalExtensionInfo(`${fixture.baseUrl}/error`, ['one'], '120.0.0.0'),
     /failed \(500\)/
   )
   await assert.rejects(
-    fetchExtensionInfo(`${fixture.baseUrl}/invalid`, ['one'], '120.0.0.0'),
+    fetchLocalExtensionInfo(`${fixture.baseUrl}/invalid`, ['one'], '120.0.0.0'),
     /Invalid extension update manifest/
   )
 })
@@ -154,7 +180,7 @@ test('fetchExtensionInfo rejects timeouts and oversized responses', async t => {
   t.after(fixture.close)
 
   await assert.rejects(
-    fetchExtensionInfo(
+    fetchLocalExtensionInfo(
       `${fixture.baseUrl}/slow`,
       ['one'],
       '120.0.0.0',
@@ -163,7 +189,7 @@ test('fetchExtensionInfo rejects timeouts and oversized responses', async t => {
     /timed out/
   )
   await assert.rejects(
-    fetchExtensionInfo(
+    fetchLocalExtensionInfo(
       `${fixture.baseUrl}/oversized`,
       ['one'],
       '120.0.0.0',
@@ -177,7 +203,7 @@ test('fetchExtensionInfo ignores unrequested ids and rejects unsafe codebases', 
   const fixture = await startServer()
   t.after(fixture.close)
 
-  const result = await fetchExtensionInfo(
+  const result = await fetchLocalExtensionInfo(
     `${fixture.baseUrl}/unrequested`,
     ['requested'],
     '120.0.0.0'
@@ -185,7 +211,7 @@ test('fetchExtensionInfo ignores unrequested ids and rejects unsafe codebases', 
   assert.deepEqual(result.map(({ id }) => id), ['requested'])
 
   await assert.rejects(
-    fetchExtensionInfo(
+    fetchLocalExtensionInfo(
       `${fixture.baseUrl}/unsafe-codebase`,
       ['requested'],
       '120.0.0.0'
@@ -198,7 +224,7 @@ test('fetchExtensionsInfo keeps successful servers when another server fails', a
   const fixture = await startServer()
   t.after(fixture.close)
 
-  const result = await fetchExtensionsInfo(
+  const result = await fetchLocalExtensionsInfo(
     [
       { id: 'working-extension', updateUrl: `${fixture.baseUrl}/updates` },
       { id: 'broken-extension', updateUrl: `${fixture.baseUrl}/error` },
@@ -234,7 +260,7 @@ test('fetchExtensionsInfo splits long update requests into batches', async t => 
     `extension-${index.toString().padStart(2, '0')}-${'x'.repeat(20)}`
   )
 
-  const result = await fetchExtensionsInfo(
+  const result = await fetchLocalExtensionsInfo(
     ids.map(id => ({ id, updateUrl: `${fixture.baseUrl}/updates` })),
     '120.0.0.0',
     { maxUrlLength: 500 }
@@ -268,7 +294,7 @@ test('fetchExtensionsInfo preserves successful batches from a partially failing 
     `extension-fifth-${'x'.repeat(30)}`
   ]
 
-  const result = await fetchExtensionsInfo(
+  const result = await fetchLocalExtensionsInfo(
     ids.map(id => ({ id, updateUrl: `${fixture.baseUrl}/batch-errors` })),
     '120.0.0.0',
     { maxUrlLength: 190 }

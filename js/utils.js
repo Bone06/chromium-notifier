@@ -5,7 +5,7 @@ import {
   extractChromiumVersion,
   filterRelevantExtensions,
   getChromiumVersionFromUserAgentData,
-  getHttpUrl,
+  getSafeExtensionUpdateUrl,
   mapPlatformToArch,
   migrateStoredConfig,
   parseUpdateManifest
@@ -59,6 +59,7 @@ export const fetchTextResponse = async (
     allowNotModified = false,
     label = 'Request',
     maxResponseBytes = MAX_REMOTE_RESPONSE_BYTES,
+    redirect = 'follow',
     timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
   } = {}
 ) => {
@@ -67,7 +68,11 @@ export const fetchTextResponse = async (
   const timeout = setTimeout(() => controller.abort(timeoutError), timeoutMs)
 
   try {
-    const response = await fetch(input, { ...init, signal: controller.signal })
+    const response = await fetch(input, {
+      ...init,
+      redirect,
+      signal: controller.signal
+    })
     if (allowNotModified && response.status === 304) {
       return {
         etag: response.headers.get('etag'),
@@ -112,19 +117,26 @@ export const fetchExtensionInfo = async (
   updateUrl,
   ids,
   prodversion,
-  requestOptions
+  requestOptions = {}
 ) => {
-  const url = createExtensionUpdateUrl(updateUrl, ids, prodversion)
+  const { allowPrivateNetwork = false, ...fetchOptions } = requestOptions
+  const url = createExtensionUpdateUrl(updateUrl, ids, prodversion, {
+    allowPrivateNetwork
+  })
   const apps = parseUpdateManifest(await fetchText(url, {}, {
     label: 'Extension update request',
-    ...requestOptions
+    redirect: 'error',
+    ...fetchOptions
   }))
   const requestedIds = new Set(ids)
 
   return apps
     .filter(({ app }) => requestedIds.has(app.appid))
     .map(({ app, updatecheck }) => {
-      if (updatecheck?.codebase && !getHttpUrl(updatecheck.codebase)) {
+      if (updatecheck?.codebase && !getSafeExtensionUpdateUrl(
+        updatecheck.codebase,
+        { allowPrivateNetwork }
+      )) {
         throw new Error('Invalid extension update codebase URL')
       }
       const info = {
@@ -147,6 +159,7 @@ export const fetchExtensionsInfo = async (
   extensions,
   prodversion,
   {
+    allowPrivateNetwork = false,
     maxResponseBytes = MAX_REMOTE_RESPONSE_BYTES,
     maxUrlLength = 1800,
     timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
@@ -165,7 +178,8 @@ export const fetchExtensionsInfo = async (
       updateUrl,
       jobs[updateUrl],
       prodversion,
-      maxUrlLength
+      maxUrlLength,
+      { allowPrivateNetwork }
     ),
     updateUrl
   }))
@@ -180,6 +194,7 @@ export const fetchExtensionsInfo = async (
   const results = await Promise.allSettled(
     batchJobs.map(({ ids, updateUrl }) =>
       fetchExtensionInfo(updateUrl, ids, prodversion, {
+        allowPrivateNetwork,
         maxResponseBytes,
         timeoutMs
       })

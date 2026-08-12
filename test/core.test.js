@@ -291,6 +291,17 @@ test('validateBuildSourcesFeed rejects unsafe and inconsistent feeds', () => {
   )
 })
 
+test('parseUpdateManifest rejects oversized and unclosed manifests', () => {
+  assert.throws(
+    () => parseUpdateManifest(`<gupdate>${'<app '.repeat(100000)}`),
+    /Invalid extension update manifest/
+  )
+  assert.throws(
+    () => parseUpdateManifest('<gupdate><app appid="one">'),
+    /Invalid extension update manifest/
+  )
+})
+
 test('signed feed rollback detection rejects older generations', () => {
   assert.equal(isBuildFeedRollback(
     '2026-07-22T12:00:00Z', '2026-07-22T11:59:59Z'
@@ -596,6 +607,32 @@ test('createExtensionUpdateUrl rejects non-HTTP update servers', () => {
     () => createExtensionUpdateUrl('file:///tmp/update.xml', ['one']),
     /Invalid extension update URL/
   )
+})
+
+test('createExtensionUpdateUrl rejects local, private and credentialed servers', () => {
+  const unsafeUrls = [
+    'http://localhost/update',
+    'http://127.0.0.1/update',
+    'http://2130706433/update',
+    'http://[::1]/update',
+    'http://10.0.0.1/update',
+    'http://169.254.169.254/update',
+    'https://user:secret@example.test/update'
+  ]
+
+  unsafeUrls.forEach(updateUrl => assert.throws(
+    () => createExtensionUpdateUrl(updateUrl, ['one']),
+    /Invalid extension update URL/
+  ))
+})
+
+test('getExtensionDownloadUrl rejects unsafe download targets', () => {
+  assert.equal(getExtensionDownloadUrl({
+    codebase: 'http://127.0.0.1/extension.crx'
+  }), null)
+  assert.equal(getExtensionDownloadUrl({
+    codebase: 'https://user:secret@example.test/extension.crx'
+  }), null)
 })
 
 test('createExtensionUpdateBatches respects the URL length limit', () => {
