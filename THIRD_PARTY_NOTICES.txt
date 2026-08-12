@@ -1,9 +1,9 @@
 Third-party software notices
 ============================
 
-Preact 10.29.7
+Preact 10.29.8
 Source: https://github.com/preactjs/preact
-Bundled file: js/vendor/preact-10.29.7.js
+Bundled file: js/vendor/preact-10.29.8.js
 
 The MIT License (MIT)
 

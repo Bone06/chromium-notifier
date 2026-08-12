@@ -1,4 +1,4 @@
-import { Component, h, render } from './vendor/preact-10.29.7.js'
+import { Component, h, render } from './vendor/preact-10.29.8.js'
 import htm from './vendor/htm-3.1.1.js'
 import {
   getConfig,
