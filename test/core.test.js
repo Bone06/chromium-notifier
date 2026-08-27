@@ -57,6 +57,22 @@ test('manifest pins the final extension id', async () => {
     .join('')
 
   assert.equal(extensionId, 'agmndnjhilhcplobmmcbnjokdbcahlce')
+  assert.equal(
+    manifest.update_url,
+    'https://raw.githubusercontent.com/Bone06/chromium-notifier/master/gupdate.xml'
+  )
+})
+
+test('gupdate publishes the final id, version and release asset URL', async () => {
+  const text = await readFile(new URL('../gupdate.xml', import.meta.url), 'utf8')
+  const [{ app, updatecheck }] = parseUpdateManifest(text)
+
+  assert.equal(app.appid, 'agmndnjhilhcplobmmcbnjokdbcahlce')
+  assert.equal(updatecheck.version, '4.0.0')
+  assert.equal(
+    updatecheck.codebase,
+    'https://github.com/Bone06/chromium-notifier/releases/latest/download/chromium-notifier.crx'
+  )
 })
 
 const buildSourceFeed = {

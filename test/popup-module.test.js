@@ -58,7 +58,7 @@ test('popup credits the build data project and labels the tracked build', async 
   assert.match(source, /<span>Tracking <\/span>/)
   assert.match(
     source,
-    /https:\/\/github\.com\/OWNER\/chromium-build-sources/
+    /https:\/\/github\.com\/Bone06\/chromium-build-sources/
   )
 })
 

@@ -22,7 +22,7 @@ import {
 
 const html = htm.bind(h)
 const BUILD_SOURCES_PROJECT_URL =
-  'https://github.com/OWNER/chromium-build-sources'
+  'https://github.com/Bone06/chromium-build-sources'
 
 /*
  * Event handlers
@@ -422,7 +422,7 @@ const Header = ({ version }) => html`
     <div class="header-cell">
       <a
         aria-label="Open the project on GitHub"
-        href="https://github.com/kkkrist/chromium-notifier"
+        href="https://github.com/Bone06/chromium-notifier"
         rel="noopener noreferrer"
         target="_blank"
       >

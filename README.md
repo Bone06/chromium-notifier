@@ -18,8 +18,8 @@ management where Chromium permits it.
 - The extension uses the signed production HTTPS feed and revalidates it with
   ETag / `If-None-Match`; unchanged `304` responses retain the previously
   verified local cache.
-- The published CRX and `gupdate.xml` still refer to 2.0.0. Update them only
-  after the 4.0.0 package has been signed and tested as an upgrade.
+- The update manifest targets the 4.0.0 CRX asset from this repository's latest
+  GitHub release. The release asset will be published after final validation.
 
 ## Features
 
@@ -40,10 +40,8 @@ trade-off and must be reviewed before distribution.
 
 ## Installation
 
-The links below still point to the last published release until 4.0.0 is ready.
-
 1. Review the source code.
-2. Download the [.crx file from the latest release](https://github.com/kkkrist/chromium-notifier/releases/latest/download/chromium-notifier.crx).
+2. Download the [.crx file from the latest release](https://github.com/Bone06/chromium-notifier/releases/latest/download/chromium-notifier.crx).
 3. Navigate to `chrome://extensions`.
 4. Drag and drop the CRX file into the browser window.
 
