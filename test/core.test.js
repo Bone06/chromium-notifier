@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 import {
@@ -40,6 +42,22 @@ const versionsFixture = {
     version: '150.0.0.1'
   }]
 }
+
+test('manifest pins the final extension id', async () => {
+  const manifest = JSON.parse(await readFile(
+    new URL('../manifest.json', import.meta.url),
+    'utf8'
+  ))
+  const digest = createHash('sha256')
+    .update(Buffer.from(manifest.key, 'base64'))
+    .digest()
+  const alphabet = 'abcdefghijklmnop'
+  const extensionId = [...digest.subarray(0, 16)]
+    .flatMap(byte => [alphabet[byte >> 4], alphabet[byte & 15]])
+    .join('')
+
+  assert.equal(extensionId, 'agmndnjhilhcplobmmcbnjokdbcahlce')
+})
 
 const buildSourceFeed = {
   builds: [{
