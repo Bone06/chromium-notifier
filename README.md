@@ -12,7 +12,7 @@ management where Chromium permits it.
 
 ## Current development status
 
-- The source tree is the unreleased Manifest V3 version 4.0.0.
+- The current stable release is Manifest V3 version 4.0.0.
 - Build data comes from the separate Chromium Build Sources aggregator, not
   directly from Woolyss or individual build repositories.
 - Feed bytes are verified with an embedded ECDSA P-256 public key before JSON
@@ -20,8 +20,8 @@ management where Chromium permits it.
 - The extension uses the signed production HTTPS feed and revalidates it with
   ETag / `If-None-Match`; unchanged `304` responses retain the previously
   verified local cache.
-- The update manifest targets the 4.0.0 CRX asset from this repository's latest
-  GitHub release. The release asset will be published after final validation.
+- The update manifest targets the 4.0.0 CRX asset from this repository's
+  [latest GitHub release](https://github.com/Bone06/chromium-notifier/releases/latest).
 
 ## Features
 
