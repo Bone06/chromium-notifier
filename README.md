@@ -8,6 +8,8 @@ version—or optionally a newer snapshot revision—is available.
 It can also check installed extensions for updates and provide basic extension
 management where Chromium permits it.
 
+![Chromium Update Notifications 4.0.0 popup](img/screenshot.png)
+
 ## Current development status
 
 - The source tree is the unreleased Manifest V3 version 4.0.0.
@@ -73,9 +75,6 @@ npm run check
 
 Runtime JavaScript and third-party UI libraries are bundled locally. npm
 dependencies are development tools and are not loaded by the extension.
-
-A current screenshot should be captured from the final signed 4.0.0 package
-before release.
 
 ## Historical upstream notice
 
