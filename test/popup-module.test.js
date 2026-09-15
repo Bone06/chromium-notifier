@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
@@ -10,6 +11,24 @@ test('popup module resolves all local imports', async () => {
       assert.match(error.message, /document is not defined/)
       return true
     }
+  )
+})
+
+test('popup pins the verified Preact 11 release candidate', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const notices = await readFile(
+    new URL('../THIRD_PARTY_NOTICES.txt', import.meta.url),
+    'utf8'
+  )
+  const vendor = await readFile(
+    new URL('../js/vendor/preact-11.0.0-rc.0.mjs', import.meta.url)
+  )
+
+  assert.match(source, /vendor\/preact-11\.0\.0-rc\.0\.mjs/)
+  assert.match(notices, /Preact 11\.0\.0-rc\.0/)
+  assert.equal(
+    createHash('sha256').update(vendor).digest('hex'),
+    '9039f662b2c985f0c26b639a78be223b93398677f28509335a8667da618ada82'
   )
 })
 
