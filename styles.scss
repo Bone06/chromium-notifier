@@ -13,7 +13,7 @@
   color-scheme: light;
 }
 
-:root[data-theme=dark] {
+:root[data-theme="dark"] {
   --background: #202124;
   --border: #5f6368;
   --control-background: #292a2d;
@@ -29,7 +29,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-theme=browser] {
+  :root[data-theme="browser"] {
     --background: #202124;
     --border: #5f6368;
     --control-background: #292a2d;
@@ -44,6 +44,7 @@
     color-scheme: dark;
   }
 }
+
 *:disabled,
 .disabled {
   opacity: 0.5;
@@ -141,18 +142,20 @@ summary {
   gap: 0.5rem 1rem;
   grid-template-columns: repeat(2, auto);
   margin-top: 0.75rem;
-}
-.badge-colors label {
-  align-items: center;
-  display: flex;
-}
-.badge-colors input[type=color] {
-  background: none;
-  border: 0;
-  height: 1.5rem;
-  margin-right: 0.35rem;
-  padding: 0;
-  width: 1.75rem;
+
+  label {
+    align-items: center;
+    display: flex;
+  }
+
+  input[type="color"] {
+    background: none;
+    border: 0;
+    height: 1.5rem;
+    margin-right: 0.35rem;
+    padding: 0;
+    width: 1.75rem;
+  }
 }
 
 ul {
@@ -168,19 +171,22 @@ ul li {
 ul.extensions li {
   display: flex;
   justify-content: space-between;
-}
-ul.extensions li button.remove {
-  border: 0;
-  cursor: pointer;
-  padding: 0;
-  visibility: hidden;
-}
-ul.extensions li button.remove:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-ul.extensions li:hover button.remove {
-  visibility: visible;
+
+  button.remove {
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+    visibility: hidden;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+  }
+
+  &:hover button.remove {
+    visibility: visible;
+  }
 }
 
 button.check-now {

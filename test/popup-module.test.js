@@ -18,6 +18,17 @@ test('popup keeps spacing between the Chromium label and version', async () => {
   assert.match(source, /<span>Chromium <\/span>\s*<code>/)
 })
 
+test('popup visibly identifies the experimental SCSS build', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+
+  assert.match(
+    source,
+    /class="beta-label" title="Experimental SCSS build">Beta<\/span>/
+  )
+  assert.match(styles, /\.beta-label\s*\{[\s\S]*?text-transform: uppercase;/)
+})
+
 test('popup keeps the update check beside the installed Chromium version', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')

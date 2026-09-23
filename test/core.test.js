@@ -61,9 +61,11 @@ test('manifest pins the final extension id', async () => {
     manifest.update_url,
     'https://raw.githubusercontent.com/Bone06/chromium-notifier/master/gupdate.xml'
   )
+  assert.equal(manifest.version, '4.1.0')
+  assert.equal(manifest.version_name, '4.1.0 Beta')
 })
 
-test('gupdate publishes the final id, version and release asset URL', async () => {
+test('gupdate stays on the stable release while this branch is beta', async () => {
   const text = await readFile(new URL('../gupdate.xml', import.meta.url), 'utf8')
   const [{ app, updatecheck }] = parseUpdateManifest(text)
 

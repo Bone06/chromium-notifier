@@ -34,6 +34,6 @@
   "permissions": ["alarms", "management", "storage"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "update_url": "https://raw.githubusercontent.com/Bone06/chromium-notifier/master/gupdate.xml",
-  "version": "4.0.0",
-  "version_name": "4.0.0"
+  "version": "4.1.0",
+  "version_name": "4.1.0 Beta"
 }

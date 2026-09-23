@@ -77,6 +77,11 @@ npm run package
 Runtime JavaScript and third-party UI libraries are bundled locally. npm
 dependencies are development tools and are not loaded by the extension.
 
+Popup styles are authored in `styles.scss`. Run `npm run build:css` after an
+SCSS change and commit the generated `styles.css` with it. `npm run check`
+rejects stale generated CSS, and the release package intentionally contains
+only `styles.css`, not the SCSS source or Sass tooling.
+
 `npm run package` recreates `build/extension` from the explicit
 `release-files.json` allowlist. The staging directory contains only runtime
 assets and required license notices; tests, development dependencies, source

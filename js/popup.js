@@ -409,6 +409,7 @@ const Header = ({ version }) => html`
       <p class="header-title">
         <strong>Chromium Update Notifications </strong>
         <code class="muted-label">${version && `v${version}`}</code>
+        <span class="beta-label" title="Experimental SCSS build">Beta</span>
       </p>
       <div class="supplemental-info">
         <span>Powered by </span>
