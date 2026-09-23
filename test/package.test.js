@@ -72,7 +72,7 @@ test('release allowlist covers runtime dependencies and nothing else', async t =
 
   for (const forbidden of [
     '.git', '.github', 'AI_CONTEXT.md', 'node_modules', 'package.json',
-    'README.md', 'release-files.json', 'scripts', 'styles.scss', 'test'
+    'README.md', 'release-files.json', 'scripts', 'scss', 'styles.scss', 'test'
   ]) {
     assert.equal(
       releaseFiles.some(path => path === forbidden || path.startsWith(`${forbidden}/`)),

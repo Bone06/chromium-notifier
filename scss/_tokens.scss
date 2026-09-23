@@ -1,0 +1,21 @@
+$base-font-size: 13px;
+$popup-min-width: 360px;
+$disabled-opacity: 0.5;
+$radius-small: 4px;
+$space-1: 0.25rem;
+$space-2: 0.5rem;
+$space-3: 0.75rem;
+$space-4: 1rem;
+$beta-background: #f9ab00;
+$beta-text: #202124;
+
+$themes: (
+  light: (background: #ffffff, border: #dadce0, control-background: #ffffff,
+    error: #b00020, icon-filter: none, install-type-background: #e8eaed,
+    install-type-text: #3c4043, link: #3367d6, muted-text: #80868b,
+    strong-text: #202124, text: #5f6368, color-scheme: light),
+  dark: (background: #202124, border: #5f6368, control-background: #292a2d,
+    error: #f28b82, icon-filter: invert(1), install-type-background: #3c4043,
+    install-type-text: #e8eaed, link: #8ab4f8, muted-text: #9aa0a6,
+    strong-text: #f1f3f4, text: #bdc1c6, color-scheme: dark)
+);

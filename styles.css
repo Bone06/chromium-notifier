@@ -79,7 +79,6 @@ details > div {
 label > p {
   margin: 0.25rem 0;
 }
-
 label > select {
   background-color: var(--control-background);
   border: 1px solid var(--border);
@@ -96,17 +95,14 @@ section {
   border-bottom: 1px solid var(--border);
   padding: 1rem;
 }
-
 section > div {
   display: flex;
   justify-content: space-between;
   margin: 0 -0.25rem;
 }
-
 section > div > div {
   margin: 0 0.25rem;
 }
-
 section > small {
   display: block;
 }
@@ -127,13 +123,16 @@ summary {
   white-space: normal;
 }
 
+.beta-label, .install-type {
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+}
+
 .install-type {
   background: var(--install-type-background);
-  border-radius: 4px;
   color: var(--install-type-text);
   font-size: 0.75rem;
   margin-left: 0.4rem;
-  padding: 0.1rem 0.3rem;
 }
 
 .badge-colors {
@@ -158,13 +157,11 @@ summary {
 ul {
   list-style-type: none;
   margin: 0;
-  padding: 0.5rem 0 0 0;
+  padding: 0.5rem 0 0;
 }
-
 ul li {
   padding: 0.1rem 0;
 }
-
 ul.extensions li {
   display: flex;
   justify-content: space-between;
@@ -228,9 +225,9 @@ button.check-now {
 
 .selected-build-details {
   color: var(--muted-text);
+  white-space: normal;
   display: block;
   margin-top: 0.35rem;
-  white-space: normal;
 }
 
 .muted-label {
@@ -239,12 +236,10 @@ button.check-now {
 
 .beta-label {
   background: #f9ab00;
-  border-radius: 4px;
   color: #202124;
   font-size: 0.7rem;
   font-weight: bold;
   margin-left: 0.4rem;
-  padding: 0.1rem 0.3rem;
   text-transform: uppercase;
 }
 
