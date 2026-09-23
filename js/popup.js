@@ -1,4 +1,4 @@
-import { Component, h, render } from './vendor/preact-11.0.0-rc.0.mjs'
+import { Component, h, render } from './vendor/preact-11.0.0-rc.2.mjs'
 import htm from './vendor/htm-3.1.1.js'
 import {
   getConfig,
