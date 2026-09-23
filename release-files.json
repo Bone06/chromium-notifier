@@ -1,0 +1,23 @@
+[
+  "COPYING.txt",
+  "THIRD_PARTY_NOTICES.txt",
+  "img/github.svg",
+  "img/icon_128.png",
+  "img/icon_16.png",
+  "img/icon_24.png",
+  "img/icon_256.png",
+  "img/icon_32.png",
+  "img/icon_48.png",
+  "img/icon_64.png",
+  "js/background.js",
+  "js/core.js",
+  "js/feed-signature.js",
+  "js/popup.js",
+  "js/theme.js",
+  "js/utils.js",
+  "js/vendor/htm-3.1.1.js",
+  "js/vendor/preact-11.0.0-rc.2.mjs",
+  "manifest.json",
+  "popup.html",
+  "styles.css"
+]
