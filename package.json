@@ -6,7 +6,8 @@
   },
   "scripts": {
     "check": "npm run lint && npm test",
-    "lint": "eslint eslint.config.js js test",
+    "lint": "eslint eslint.config.js js scripts test",
+    "package": "node scripts/stage-extension.js",
     "test": "node --test"
   },
   "devDependencies": {

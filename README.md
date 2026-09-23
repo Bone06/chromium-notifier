@@ -71,10 +71,18 @@ colors. `Check now` performs an immediate refresh.
 ```text
 npm ci
 npm run check
+npm run package
 ```
 
 Runtime JavaScript and third-party UI libraries are bundled locally. npm
 dependencies are development tools and are not loaded by the extension.
+
+`npm run package` recreates `build/extension` from the explicit
+`release-files.json` allowlist. The staging directory contains only runtime
+assets and required license notices; tests, development dependencies, source
+documentation and repository metadata are excluded. Use this staged directory
+when creating a signed CRX with the established private signing key. The key
+must remain outside the repository, staging directory and release artifacts.
 
 ## Historical upstream notice
 
