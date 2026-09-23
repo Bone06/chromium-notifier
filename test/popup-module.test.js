@@ -41,6 +41,15 @@ test('popup gives stable keys to dynamic Preact lists', async () => {
   assert.match(source, /<label key="\$\{name\}">/)
 })
 
+test('popup visibly identifies the experimental Preact build as beta', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+
+  assert.match(source, /class="beta-label"[^>]*>Beta<\/span>/)
+  assert.match(source, /title="Experimental Preact 11 build"/)
+  assert.match(styles, /\.beta-label\s*\{[\s\S]*?background: #fbbc04;/)
+})
+
 test('popup keeps spacing between the Chromium label and version', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /<span>Chromium <\/span>\s*<code>/)
