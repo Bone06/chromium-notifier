@@ -299,8 +299,31 @@ export const migrateStoredConfig = (store = {}) => {
   return migrated
 }
 
-export const matchExtension = extension => ({ id, version }) =>
-  Boolean(version && id === extension.id)
+export const indexExtensionInfoById = (extensionsInfo = []) => {
+  const infoById = new Map()
+  for (const info of extensionsInfo) {
+    if (info?.id && info.version && !infoById.has(info.id)) {
+      infoById.set(info.id, info)
+    }
+  }
+  return infoById
+}
+
+export const groupExtensionsByUpdateInfo = (
+  extensions = [],
+  extensionsInfo = []
+) => {
+  const infoById = indexExtensionInfoById(extensionsInfo)
+
+  const supported = []
+  const unsupported = []
+  for (const extension of [...extensions].sort((a, b) =>
+    a.name.localeCompare(b.name))) {
+    (infoById.has(extension.id) ? supported : unsupported).push(extension)
+  }
+
+  return { infoById, supported, unsupported }
+}
 
 export const filterRelevantExtensions = (extensions = [], selfId) =>
   extensions.filter(({ id, type }) => type === 'extension' && id !== selfId)
@@ -605,12 +628,15 @@ export const getBadgeStatus = ({
   const chromiumUpdate =
     getChromiumVersionStatus(currentVersion, availableVersion) ===
       'update-available' || snapshotRevisionUpdate
+  const extensionInfoById = extensionsTrack
+    ? indexExtensionInfoById(extensionsInfo)
+    : null
   const extensionUpdate = Boolean(
     extensionsTrack &&
     extensions.some(extension =>
       hasExtensionUpdate(
         extension,
-        extensionsInfo.find(({ id }) => id === extension.id)
+        extensionInfoById.get(extension.id)
       )
     )
   )

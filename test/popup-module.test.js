@@ -32,6 +32,15 @@ test('popup pins the verified Preact 11 release candidate', async () => {
   )
 })
 
+test('popup gives stable keys to dynamic Preact lists', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+
+  assert.match(source, /<\$\{ExtensionRow\}\s+key="\$\{extension\.id\}"/)
+  assert.match(source, /key="\$\{archOpt\}"/)
+  assert.match(source, /key="\$\{tagOpts\.tag\}"/)
+  assert.match(source, /<label key="\$\{name\}">/)
+})
+
 test('popup keeps spacing between the Chromium label and version', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /<span>Chromium <\/span>\s*<code>/)

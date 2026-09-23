@@ -19,15 +19,16 @@ import {
   getChromiumVersionFromUserAgentData,
   getExtensionDownloadUrl,
   getExtensionCapabilities,
+  groupExtensionsByUpdateInfo,
   getInstallTypeLabel,
   getPlatformDisplayName,
   getBuildFeedErrorState,
   getBuildFeedSuccessState,
   hasExtensionUpdate,
   hasSnapshotRevisionUpdate,
+  indexExtensionInfoById,
   isBuildFeedRollback,
   mapPlatformToArch,
-  matchExtension,
   migrateStoredConfig,
   parseUpdateManifest,
   validateBuildSourcesFeed
@@ -425,11 +426,17 @@ test('migrateStoredConfig is idempotent and preserves future schemas', () => {
   assert.deepEqual(migrateStoredConfig(future), future)
 })
 
-test('matchExtension only matches an extension with the same id and a version', () => {
-  const extension = { id: 'one', version: '1.0.0' }
-  assert.equal(matchExtension(extension)({ id: 'one', version: '2.0.0' }), true)
-  assert.equal(matchExtension(extension)({ id: 'two', version: '2.0.0' }), false)
-  assert.equal(matchExtension(extension)({ id: 'one' }), false)
+test('indexExtensionInfoById preserves the first valid result for each id', () => {
+  const first = { id: 'one', version: '2.0.0' }
+  const duplicate = { id: 'one', version: '3.0.0' }
+  const infoById = indexExtensionInfoById([
+    { id: 'missing-version' },
+    first,
+    duplicate
+  ])
+
+  assert.equal(infoById.get('one'), first)
+  assert.equal(infoById.has('missing-version'), false)
 })
 
 test('filterRelevantExtensions keeps only other extensions', () => {
@@ -494,6 +501,21 @@ test('getBadgeStatus ignores stale extension updates when tracking is disabled',
 
   assert.equal(getBadgeStatus(state), 'none')
   assert.equal(getBadgeStatus({ ...state, extensionsTrack: true }), 'extensions')
+})
+
+test('getBadgeStatus uses the first valid update result for each extension', () => {
+  assert.equal(
+    getBadgeStatus({
+      extensions: [{ id: 'one', version: '1.0.0' }],
+      extensionsInfo: [
+        { id: 'one' },
+        { id: 'one', version: '2.0.0' },
+        { id: 'one', version: '3.0.0' }
+      ],
+      extensionsTrack: true
+    }),
+    'extensions'
+  )
 })
 
 test('getBadgeStatus only reports a newer remote Chromium version', () => {
@@ -612,6 +634,37 @@ test('getBadgePresentation marks cached Chromium data in the tooltip', () => {
     getBadgePresentation('none', { hasStaleBuildSource: true }).title,
     /selected build source is using cached data/
   )
+})
+
+test('groupExtensionsByUpdateInfo indexes, sorts and partitions extensions', () => {
+  const extensions = [
+    { id: 'unsupported', name: 'Zulu' },
+    { id: 'supported', name: 'Alpha' },
+    { id: 'missing-version', name: 'Beta' }
+  ]
+  const firstInfo = { id: 'supported', version: '2.0.0' }
+  const duplicateInfo = { id: 'supported', version: '3.0.0' }
+  const extensionsInfo = [
+    firstInfo,
+    duplicateInfo,
+    { id: 'missing-version' }
+  ]
+
+  const { infoById, supported, unsupported } =
+    groupExtensionsByUpdateInfo(extensions, extensionsInfo)
+
+  assert.equal(infoById.get('supported'), firstInfo)
+  assert.equal(infoById.has('missing-version'), false)
+  assert.deepEqual(supported.map(({ id }) => id), ['supported'])
+  assert.deepEqual(
+    unsupported.map(({ id }) => id),
+    ['missing-version', 'unsupported']
+  )
+  assert.deepEqual(extensions.map(({ id }) => id), [
+    'unsupported',
+    'supported',
+    'missing-version'
+  ])
 })
 
 test('createExtensionUpdateUrl preserves query parameters and appends ids', () => {
