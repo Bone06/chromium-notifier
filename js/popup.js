@@ -136,7 +136,7 @@ const ChromiumInfo = ({
       </span>
       <span class="chromium-status__installed">
         <span>
-          <span>Installed </span>
+          <span>Installed: </span>
           <code
             class="${versionStatus === 'update-available'
               ? 'chromium-status__installed-version--update'

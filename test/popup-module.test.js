@@ -17,7 +17,7 @@ test('popup separates the Chromium title from the installed version', async () =
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /<span>Chromium<\/span>/)
   assert.match(source, /class="chromium-status__installed"/)
-  assert.match(source, /<span>Installed <\/span>\s*<code[\s\S]*?>/)
+  assert.match(source, /<span>Installed: <\/span>\s*<code[\s\S]*?>/)
   assert.match(source, /chromium-status__installed-version--update/)
 })
 
