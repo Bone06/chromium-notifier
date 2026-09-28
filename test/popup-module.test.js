@@ -79,7 +79,45 @@ test('popup keeps spacing between the revision and its timestamp', async () => {
 
 test('popup identifies custom colors as badge colors', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
   assert.match(source, /Use custom badge colors/)
+  assert.match(styles, /\.badge-colors input\[type=color\][\s\S]*?border-radius: 50%;/)
+  assert.match(styles, /\.badge-colors input\[type=color\][\s\S]*?box-shadow: 0 0 0 1px var\(--border\);/)
+  assert.match(styles, /::-webkit-color-swatch[\s\S]*?border-radius: 50%;/)
+})
+
+test('popup consistently indents card details from their summaries', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(source, /class="chromium-status__tracking"/)
+  assert.match(styles, /\.chromium-status__installed\s*\{[\s\S]*?font-size: 13px;/)
+  assert.equal(source.match(/class="details-content"/g)?.length, 3)
+  assert.match(styles, /\.details-content\s*\{[\s\S]*?margin-left: 0\.75rem;/)
+  assert.match(styles, /\.chromium-status__tracking\s*\{[\s\S]*?margin: 1em 0 0;/)
+})
+
+test('popup dropdowns use the shared UI typography and surfaces', async () => {
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(styles, /label > select\s*\{[\s\S]*?border-radius: 10px;/)
+  assert.match(styles, /label > select\s*\{[\s\S]*?color: var\(--strong-text\);/)
+  assert.match(styles, /label > select\s*\{[\s\S]*?font-family: inherit;/)
+  assert.match(styles, /label > select\s*\{[\s\S]*?font-size: 13px;/)
+})
+
+test('popup truncates long extension names without overflowing their row', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(source, /class="extension-row__name"/)
+  assert.match(source, /title="\$\{extension\.name\}"/)
+  assert.match(styles, /\.extension-row__name\s*\{[\s\S]*?text-overflow: ellipsis;/)
+  assert.match(styles, /\.extension-row__content\s*\{[\s\S]*?min-width: 0;/)
+})
+
+test('popup extensions follow the card text hierarchy', async () => {
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(styles, /\.extensions li \.extension-row__name\s*\{[\s\S]*?color: var\(--strong-text\);/)
+  assert.match(styles, /\.extensions li \.extension-row__version\s*\{\s*color: var\(--muted-text\);/)
+  assert.match(styles, /\.extensions li button\.remove\s*\{[\s\S]*?background: transparent;/)
 })
 
 test('popup credits the build data project and labels the tracked build', async () => {

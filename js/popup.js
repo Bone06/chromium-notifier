@@ -155,6 +155,7 @@ const ChromiumInfo = ({
         >${checking ? 'Checking…' : 'Check now'}</button>
       </span>
     </summary>
+    <div class="details-content">
     <ul>
       <li>
         <span class="muted-label">Available: </span>
@@ -182,7 +183,7 @@ const ChromiumInfo = ({
           </li>
         `}
     </ul>
-    <div style="font-size: smaller; margin-top: 1em">
+    <div class="chromium-status__tracking">
       ${woolyssDataStale &&
         html`
           <p aria-live="polite" class="setting-warning">
@@ -217,8 +218,9 @@ const ChromiumInfo = ({
         href="${current.releaseUrl}"
         rel="noopener noreferrer"
         target="_blank"
-        >${current.source.name}</a
+      >${current.source.name}</a
       >
+    </div>
     </div>
   </details>
   <div class="chromium-status__history">
@@ -275,30 +277,34 @@ const ExtensionRow = ({
     : 'Enable'
 
   return html`
-    <li>
-      <div class="${extension.enabled ? '' : ' disabled'}">
+    <li class="extension-row">
+      <div class="extension-row__content${extension.enabled ? '' : ' disabled'}">
         <input
           aria-label="${toggleTitle} ${extension.name}"
           checked="${extension.enabled}"
           disabled="${pending || !canToggle}"
           id="${extension.id}"
           onChange="${onToggleExtension}"
-          style="margin-right: 0.75em"
+          class="extension-row__toggle"
           title="${toggleTitle}"
           type="checkbox"
         />
         ${extension.homepageUrl
           ? html`
               <a
+                class="extension-row__name"
                 href="${extension.homepageUrl}"
                 rel="noopener noreferrer"
                 target="_blank"
+                title="${extension.name}"
               >
-                <span>${extension.name} </span>
+                ${extension.name}
               </a>
             `
-          : `${extension.name} `}
-        <code>
+          : html`<span class="extension-row__name" title="${extension.name}"
+              >${extension.name}</span
+            >`}
+        <code class="extension-row__version">
           <span>v${extension.version} </span>
           ${hasExtensionUpdate(extension, info) &&
             downloadUrl &&
@@ -314,7 +320,7 @@ const ExtensionRow = ({
         ${installTypeLabel &&
           html`<span class="install-type">${installTypeLabel}</span>`}
       </div>
-      <div>
+      <div class="extension-row__actions">
         <button
           aria-label="${canRemove
             ? `Remove ${extension.name}`
@@ -363,6 +369,7 @@ const ExtensionsInfo = ({
       )}"
     >
       <summary>${extensions.length} Extensions</summary>
+      <div class="details-content">
       ${managementError &&
         html`
           <p aria-live="polite" class="management-error">
@@ -434,6 +441,7 @@ const ExtensionsInfo = ({
             </ul>
           </div>
         `}
+      </div>
     </details>
   `
 }
@@ -505,7 +513,7 @@ const Settings = ({
 }) => html`
   <details open="${selectionStatus !== 'valid'}">
     <summary>Settings</summary>
-    <div>
+    <div class="details-content">
       ${selectionStatus === 'platform-unavailable' &&
         html`
           <p class="setting-warning">

@@ -45,7 +45,11 @@ body {
   width: token.$popup-min-width;
 }
 
-details > div { padding-top: token.$space-2; }
+.details-content {
+  margin-left: token.$space-3;
+  padding-top: token.$space-2;
+  width: calc(100% - #{token.$space-3});
+}
 
 label {
   > p { margin: token.$space-1 0; }
@@ -53,14 +57,21 @@ label {
   > select {
     background-color: var(--control-background);
     border: 1px solid var(--border);
-    border-radius: token.$radius-small;
-    color: var(--link);
+    border-radius: token.$radius-medium;
+    color: var(--strong-text);
     display: block;
-    font-weight: bold;
-    height: 2em;
+    font-family: inherit;
+    font-size: token.$base-font-size;
+    font-weight: 500;
     height: calc(1.5em + 0.75rem + 2px);
     padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+    transition: background-color 140ms ease, border-color 140ms ease;
     width: 100%;
+
+    &:hover:not(:disabled) {
+      background-color: var(--surface-subtle);
+      border-color: var(--muted-text);
+    }
   }
 }
 
@@ -170,7 +181,7 @@ details > summary {
     align-items: center;
     color: var(--muted-text);
     display: flex;
-    font-size: 0.72rem;
+    font-size: token.$base-font-size;
     font-weight: normal;
     margin: token.$space-1 0 0 0.75rem;
     width: calc(100% - 0.75rem);
@@ -192,6 +203,11 @@ details > summary {
     padding-top: token.$space-2;
 
     small { display: block; font-size: 0.68rem; }
+  }
+
+  &__tracking {
+    font-size: smaller;
+    margin: 1em 0 0;
   }
 
   > details[open] > summary { margin-bottom: token.$space-2; }
@@ -224,12 +240,23 @@ summary { cursor: pointer; }
   label { align-items: center; display: flex; }
 
   input[type="color"] {
-    background: none;
-    border: 0;
+    appearance: none;
+    background: var(--surface);
+    border: 2px solid var(--surface);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--border);
+    cursor: pointer;
     height: 1.5rem;
     margin-right: 0.35rem;
-    padding: 0;
-    width: 1.75rem;
+    overflow: hidden;
+    padding: 2px;
+    width: 1.5rem;
+
+    &::-webkit-color-swatch-wrapper { padding: 0; }
+    &::-webkit-color-swatch {
+      border: 0;
+      border-radius: 50%;
+    }
   }
 }
 
@@ -241,16 +268,52 @@ ul {
   li { padding: 0.1rem 0; }
 
   &.extensions li {
+    align-items: center;
     display: flex;
+    gap: token.$space-2;
     justify-content: space-between;
+    min-width: 0;
+
+    .extension-row__content {
+      align-items: center;
+      display: flex;
+      flex: 1 1 auto;
+      gap: token.$space-1;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .extension-row__toggle { flex: 0 0 auto; margin-right: token.$space-1; }
+
+    .extension-row__name {
+      color: var(--strong-text);
+      display: block;
+      font-weight: 500;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    a.extension-row__name:hover { color: var(--link); }
+
+    .extension-row__version { color: var(--muted-text); }
+
+    .extension-row__version,
+    .install-type,
+    .extension-row__actions { flex: 0 0 auto; }
 
     button.remove {
+      background: transparent;
       border: 0;
+      color: var(--muted-text);
       cursor: pointer;
+      font-family: inherit;
       padding: 0;
       visibility: hidden;
 
       &:disabled { cursor: not-allowed; opacity: 0.45; }
+      &:hover:not(:disabled) { color: var(--error); }
     }
 
     &:hover button.remove { visibility: visible; }
@@ -258,10 +321,10 @@ ul {
 }
 
 button.check-now {
-  background: var(--accent-soft);
+  background: var(--action-background);
   border: 1px solid transparent;
   border-radius: token.$radius-small;
-  color: var(--link);
+  color: var(--action-text);
   cursor: pointer;
   font-family: inherit;
   font-size: 0.75rem;
@@ -271,7 +334,10 @@ button.check-now {
   min-width: 0;
   padding: 0.25rem 0.45rem;
 
-  &:hover { border-color: var(--link); }
+  &:hover {
+    background: var(--action-hover);
+    border-color: var(--action-text);
+  }
 }
 
 .badge {
