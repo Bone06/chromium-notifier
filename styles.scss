@@ -1,6 +1,10 @@
 @use "scss/mixins" as mix;
 @use "scss/tokens" as token;
 
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
 :root { @include mix.theme(light); }
 :root[data-theme="dark"] { @include mix.theme(dark); }
 
@@ -31,6 +35,14 @@ body {
   margin: 0;
   min-width: token.$popup-min-width;
   white-space: nowrap;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.45;
+}
+
+.popup {
+  background: var(--background);
+  padding: token.$space-4;
+  width: token.$popup-min-width;
 }
 
 details > div { padding-top: token.$space-2; }
@@ -41,6 +53,7 @@ label {
   > select {
     background-color: var(--control-background);
     border: 1px solid var(--border);
+    border-radius: token.$radius-small;
     color: var(--link);
     display: block;
     font-weight: bold;
@@ -52,8 +65,13 @@ label {
 }
 
 section {
-  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: token.$radius-large;
+  margin-bottom: token.$space-3;
   padding: token.$space-4;
+
+  &:last-child { margin-bottom: 0; }
 
   > div {
     display: flex;
@@ -64,6 +82,119 @@ section {
   }
 
   > small { display: block; }
+}
+
+.header-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: token.$space-2 token.$space-3;
+}
+
+.popup-header {
+  align-items: center;
+  display: flex;
+  gap: token.$space-3;
+  justify-content: flex-start;
+  margin: 0;
+
+  &__icon { flex: 0 0 auto; height: 36px; width: 36px; }
+  &__content { flex: 1; margin: 0; min-width: 0; }
+  &__title {
+    color: var(--strong-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    margin: 0;
+  }
+  &__meta {
+    align-items: center;
+    color: var(--muted-text);
+    display: flex;
+    font-size: 0.7rem;
+    gap: token.$space-1;
+    margin-top: 2px;
+  }
+
+  &__credit {
+    color: var(--muted-text);
+    font-size: 0.7rem;
+    line-height: 1.3;
+    margin-top: 2px;
+  }
+
+  .header-cell { flex: 0 0 auto; margin: 0 0 0 auto; }
+  .beta-label { font-size: inherit; margin-left: 0; }
+
+  .header-cell a {
+    align-items: center;
+    background: var(--surface-subtle);
+    border: 1px solid transparent;
+    border-radius: 50%;
+    display: inline-flex;
+    height: 30px;
+    justify-content: center;
+    transition: border-color 140ms ease, background-color 140ms ease;
+    width: 30px;
+
+    &:hover {
+      background: var(--accent-soft);
+      border-color: var(--border);
+    }
+  }
+}
+
+details > summary {
+  color: var(--strong-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  &::marker { font-size: 0.75em; }
+}
+
+.chromium-status {
+  display: block;
+  margin: 0;
+
+  &__summary {
+    color: var(--strong-text);
+  }
+
+  &__summary-content {
+    align-items: center;
+    display: inline-flex;
+    width: calc(100% - 0.75rem);
+  }
+
+  &__installed {
+    align-items: center;
+    color: var(--muted-text);
+    display: flex;
+    font-size: 0.72rem;
+    font-weight: normal;
+    margin: token.$space-1 0 0 0.75rem;
+    width: calc(100% - 0.75rem);
+  }
+
+  &__installed code {
+    color: var(--success);
+    font-size: inherit;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  &__installed code#{&}__installed-version--update { color: var(--error); }
+
+  &__history {
+    border-top: 1px solid var(--border);
+    color: var(--muted-text);
+    margin-top: token.$space-3;
+    padding-top: token.$space-2;
+
+    small { display: block; font-size: 0.68rem; }
+  }
+
+  > details[open] > summary { margin-bottom: token.$space-2; }
 }
 
 summary { cursor: pointer; }
@@ -80,7 +211,7 @@ summary { cursor: pointer; }
   @extend %compact-label;
   background: var(--install-type-background);
   color: var(--install-type-text);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   margin-left: 0.4rem;
 }
 
@@ -127,19 +258,20 @@ ul {
 }
 
 button.check-now {
-  background: none;
-  border: 0;
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  border-radius: token.$radius-small;
   color: var(--link);
   cursor: pointer;
-  float: right;
   font-family: inherit;
-  font-size: 0.85em;
+  font-size: 0.75rem;
+  font-weight: 600;
   line-height: inherit;
-  margin: 0 0 0 token.$space-4;
-  min-width: 7.5rem;
-  padding: 0 0.45rem;
-  position: relative;
-  top: 0.15em;
+  margin: 0 0 0 auto;
+  min-width: 0;
+  padding: 0.25rem 0.45rem;
+
+  &:hover { border-color: var(--link); }
 }
 
 .badge {

@@ -1,7 +1,17 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
-  --background: #ffffff;
+  --background: #f8f9fa;
+  --surface: #ffffff;
+  --surface-subtle: #f8f9fa;
   --border: #dadce0;
   --control-background: #ffffff;
+  --accent-soft: #e8f0fe;
+  --success: #1e8e3e;
   --error: #b00020;
   --icon-filter: none;
   --install-type-background: #e8eaed;
@@ -15,8 +25,12 @@
 
 :root[data-theme=dark] {
   --background: #202124;
-  --border: #5f6368;
+  --surface: #292a2d;
+  --surface-subtle: #242528;
+  --border: #3c4043;
   --control-background: #292a2d;
+  --accent-soft: #30445f;
+  --success: #81c995;
   --error: #f28b82;
   --icon-filter: invert(1);
   --install-type-background: #3c4043;
@@ -31,8 +45,12 @@
 @media (prefers-color-scheme: dark) {
   :root[data-theme=browser] {
     --background: #202124;
-    --border: #5f6368;
+    --surface: #292a2d;
+    --surface-subtle: #242528;
+    --border: #3c4043;
     --control-background: #292a2d;
+    --accent-soft: #30445f;
+    --success: #81c995;
     --error: #f28b82;
     --icon-filter: invert(1);
     --install-type-background: #3c4043;
@@ -68,8 +86,16 @@ body {
   color: var(--text);
   font-size: 13px;
   margin: 0;
-  min-width: 360px;
+  min-width: 390px;
   white-space: nowrap;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.45;
+}
+
+.popup {
+  background: var(--background);
+  padding: 1rem;
+  width: 390px;
 }
 
 details > div {
@@ -82,6 +108,7 @@ label > p {
 label > select {
   background-color: var(--control-background);
   border: 1px solid var(--border);
+  border-radius: 4px;
   color: var(--link);
   display: block;
   font-weight: bold;
@@ -92,8 +119,14 @@ label > select {
 }
 
 section {
-  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
   padding: 1rem;
+}
+section:last-child {
+  margin-bottom: 0;
 }
 section > div {
   display: flex;
@@ -105,6 +138,128 @@ section > div > div {
 }
 section > small {
   display: block;
+}
+
+.header-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.popup-header {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-start;
+  margin: 0;
+}
+.popup-header__icon {
+  flex: 0 0 auto;
+  height: 36px;
+  width: 36px;
+}
+.popup-header__content {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+.popup-header__title {
+  color: var(--strong-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0;
+}
+.popup-header__meta {
+  align-items: center;
+  color: var(--muted-text);
+  display: flex;
+  font-size: 0.7rem;
+  gap: 0.25rem;
+  margin-top: 2px;
+}
+.popup-header__credit {
+  color: var(--muted-text);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+.popup-header .header-cell {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}
+.popup-header .beta-label {
+  font-size: inherit;
+  margin-left: 0;
+}
+.popup-header .header-cell a {
+  align-items: center;
+  background: var(--surface-subtle);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  transition: border-color 140ms ease, background-color 140ms ease;
+  width: 30px;
+}
+.popup-header .header-cell a:hover {
+  background: var(--accent-soft);
+  border-color: var(--border);
+}
+
+details > summary {
+  color: var(--strong-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+details > summary::marker {
+  font-size: 0.75em;
+}
+
+.chromium-status {
+  display: block;
+  margin: 0;
+}
+.chromium-status__summary {
+  color: var(--strong-text);
+}
+.chromium-status__summary-content {
+  align-items: center;
+  display: inline-flex;
+  width: calc(100% - 0.75rem);
+}
+.chromium-status__installed {
+  align-items: center;
+  color: var(--muted-text);
+  display: flex;
+  font-size: 0.72rem;
+  font-weight: normal;
+  margin: 0.25rem 0 0 0.75rem;
+  width: calc(100% - 0.75rem);
+}
+.chromium-status__installed code {
+  color: var(--success);
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.chromium-status__installed code.chromium-status__installed-version--update {
+  color: var(--error);
+}
+.chromium-status__history {
+  border-top: 1px solid var(--border);
+  color: var(--muted-text);
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+}
+.chromium-status__history small {
+  display: block;
+  font-size: 0.68rem;
+}
+.chromium-status > details[open] > summary {
+  margin-bottom: 0.5rem;
 }
 
 summary {
@@ -131,7 +286,7 @@ summary {
 .install-type {
   background: var(--install-type-background);
   color: var(--install-type-text);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   margin-left: 0.4rem;
 }
 
@@ -181,19 +336,21 @@ ul.extensions li:hover button.remove {
 }
 
 button.check-now {
-  background: none;
-  border: 0;
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  border-radius: 4px;
   color: var(--link);
   cursor: pointer;
-  float: right;
   font-family: inherit;
-  font-size: 0.85em;
+  font-size: 0.75rem;
+  font-weight: 600;
   line-height: inherit;
-  margin: 0 0 0 1rem;
-  min-width: 7.5rem;
-  padding: 0 0.45rem;
-  position: relative;
-  top: 0.15em;
+  margin: 0 0 0 auto;
+  min-width: 0;
+  padding: 0.25rem 0.45rem;
+}
+button.check-now:hover {
+  border-color: var(--link);
 }
 
 .badge {

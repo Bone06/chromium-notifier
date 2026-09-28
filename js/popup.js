@@ -107,6 +107,8 @@ const ChromiumInfo = ({
   chromiumOpenRequest,
   current = {},
   currentVersion,
+  lastAttemptAt,
+  lastErrorAt,
   lastSuccessAt,
   notifySnapshotRevisions,
   onCheckNow,
@@ -124,21 +126,35 @@ const ChromiumInfo = ({
   }
 
   return html`
+  <div class="chromium-status">
   <details
     key="${chromiumOpenRequest}"
     open="${versionStatus === 'update-available'}"
   >
-    <summary>
-      <span>Chromium </span>
-      <code>${currentVersion ? `v${currentVersion}` : 'version unavailable'}</code>
-      <button
-        aria-busy="${checking}"
-        aria-live="polite"
-        class="check-now"
-        disabled="${checking}"
-        onClick="${checkForUpdates}"
-        type="button"
-      >${checking ? 'Checking…' : 'Check for Updates'}</button>
+    <summary class="chromium-status__summary">
+      <span class="chromium-status__summary-content">
+        <span>Chromium</span>
+      </span>
+      <span class="chromium-status__installed">
+        <span>
+          <span>Installed </span>
+          <code
+            class="${versionStatus === 'update-available'
+              ? 'chromium-status__installed-version--update'
+              : ''}"
+          >${currentVersion ? `v${currentVersion}` : 'version unavailable'}</code>
+        </span>
+        <button
+          aria-busy="${checking}"
+          aria-label="${checking ? 'Checking for updates' : 'Check for updates'}"
+          aria-live="polite"
+          class="check-now"
+          disabled="${checking}"
+          onClick="${checkForUpdates}"
+          title="Check for updates"
+          type="button"
+        >${checking ? 'Checking…' : 'Check now'}</button>
+      </span>
     </summary>
     <ul>
       <li>
@@ -176,13 +192,12 @@ const ChromiumInfo = ({
             ${lastSuccessAt
               ? new Date(lastSuccessAt).toLocaleString()
               : 'the last successful check'}.
-            ${woolyssError}
           </p>
         `}
       ${current.source?.stale &&
         html`
           <p aria-live="polite" class="setting-warning">
-            This build source could not be refreshed. Showing cached source
+            The selected build source could not be refreshed. Showing cached source
             data from ${new Date(current.source.lastSuccessAt).toLocaleString()}.
             ${current.source.error}
           </p>
@@ -208,6 +223,28 @@ const ChromiumInfo = ({
       >
     </div>
   </details>
+  <div class="chromium-status__history">
+      <small>
+        ${lastAttemptAt
+          ? `Last check attempt: ${new Date(lastAttemptAt).toLocaleString()}`
+          : `Waiting for data…`}
+      </small>
+      ${lastSuccessAt &&
+        html`
+          <small>
+            Last successful check: ${new Date(lastSuccessAt).toLocaleString()}
+          </small>
+        `}
+      ${woolyssError &&
+        html`
+          <small aria-live="polite" class="error-text">
+            Last error${lastErrorAt
+              ? ` (${new Date(lastErrorAt).toLocaleString()})`
+              : ''}: ${woolyssError}
+          </small>
+        `}
+  </div>
+  </div>
 `
 }
 
@@ -404,14 +441,17 @@ const ExtensionsInfo = ({
 }
 
 const Header = ({ version }) => html`
-  <div>
-    <div>
-      <p class="header-title">
-        <strong>Chromium Update Notifications </strong>
-        <code class="muted-label">${version && `v${version}`}</code>
-        <span class="beta-label" title="Experimental SCSS build">Beta</span>
+  <div class="popup-header">
+    <img class="popup-header__icon" alt="" src="../img/icon_48.png" />
+    <div class="popup-header__content">
+      <p class="popup-header__title">
+        Chromium Update Notifications
       </p>
-      <div class="supplemental-info">
+      <div class="popup-header__meta">
+        <code>${version && `v${version}`}</code>
+        <span class="beta-label" title="Experimental SCSS build">Beta</span>
+      </div>
+      <div class="popup-header__credit">
         <span>Powered by </span>
         <a
           href="${BUILD_SOURCES_PROJECT_URL}"
@@ -440,9 +480,9 @@ class Section extends Component {
     this.setState({ errorMsg: error.message })
   }
 
-  render ({ children }, { errorMsg }) {
+  render ({ children, className = '' }, { errorMsg }) {
     return html`
-      <section>
+      <section class="card ${className}">
         ${errorMsg
           ? html`
               <small aria-live="polite" class="error-text">${errorMsg}</small>
@@ -801,7 +841,8 @@ class App extends Component {
     const selectionStatus = getBuildSelectionStatus({ arch, tag, versions })
 
     return html`
-      <${Section}>
+      <main class="popup">
+      <${Section} className="header-card">
         <${Header} version="${self && self.version}"/>
       <//>
 
@@ -815,6 +856,8 @@ class App extends Component {
               chromiumOpenRequest="${chromiumOpenRequest}"
               current="${current}"
               currentVersion="${currentVersion}"
+              lastAttemptAt="${lastAttemptAt}"
+              lastErrorAt="${lastErrorAt}"
               lastSuccessAt="${lastSuccessAt}"
               notifySnapshotRevisions="${notifySnapshotRevisions}"
               onCheckNow="${this.onCheckNow}"
@@ -856,34 +899,7 @@ class App extends Component {
         />
       <//>
 
-      <${Section}>
-        ${current?.source?.stale &&
-          html`
-            <small aria-live="polite" class="setting-warning">
-              The selected build source could not be refreshed and is using
-              cached data.
-            </small>
-          `}
-        <small class="supplemental-info">
-          ${lastAttemptAt
-            ? `Last check attempt: ${new Date(lastAttemptAt).toLocaleString()}`
-            : `Waiting for data…`}
-        </small>
-        ${lastSuccessAt &&
-          html`
-            <small class="supplemental-info">
-              Last successful check: ${new Date(lastSuccessAt).toLocaleString()}
-            </small>
-          `}
-        ${woolyssError &&
-          html`
-            <small aria-live="polite" class="error-text last-error">
-              Last error${lastErrorAt
-                ? ` (${new Date(lastErrorAt).toLocaleString()})`
-                : ''}: ${woolyssError}
-            </small>
-          `}
-      <//>
+      </main>
     `
   }
 }

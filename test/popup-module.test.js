@@ -13,9 +13,12 @@ test('popup module resolves all local imports', async () => {
   )
 })
 
-test('popup keeps spacing between the Chromium label and version', async () => {
+test('popup separates the Chromium title from the installed version', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
-  assert.match(source, /<span>Chromium <\/span>\s*<code>/)
+  assert.match(source, /<span>Chromium<\/span>/)
+  assert.match(source, /class="chromium-status__installed"/)
+  assert.match(source, /<span>Installed <\/span>\s*<code[\s\S]*?>/)
+  assert.match(source, /chromium-status__installed-version--update/)
 })
 
 test('popup visibly identifies the experimental SCSS build', async () => {
@@ -29,17 +32,33 @@ test('popup visibly identifies the experimental SCSS build', async () => {
   assert.match(styles, /\.beta-label\s*\{[\s\S]*?text-transform: uppercase;/)
 })
 
-test('popup keeps the update check beside the installed Chromium version', async () => {
+test('popup keeps the update check in the Chromium summary', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
-  const summary = source.match(/<summary>\s*<span>Chromium[\s\S]*?<\/summary>/)?.[0]
-  assert.match(summary, /Check for Updates/)
+  const summary = source.match(
+    /<summary class="chromium-status__summary">[\s\S]*?<span>Chromium[\s\S]*?<\/summary>/
+  )?.[0]
+  assert.match(summary, /aria-label="\$\{checking \? 'Checking for updates' : 'Check for updates'\}"/)
+  assert.match(summary, />\$\{checking \? 'Checking…' : 'Check now'\}<\/button>/)
   assert.match(summary, /class="check-now"/)
   assert.match(source, /event\.preventDefault\(\)/)
   assert.match(source, /event\.stopPropagation\(\)/)
-  assert.doesNotMatch(source, />Check now</)
-  assert.match(styles, /button\.check-now[\s\S]*?float: right;/)
-  assert.match(styles, /button\.check-now[\s\S]*?font-size: 0\.85em;/)
+  assert.match(styles, /\.chromium-status__summary-content\s*\{[\s\S]*?display: inline-flex;/)
+  assert.match(styles, /button\.check-now[\s\S]*?margin: 0 0 0 auto;/)
+  assert.match(styles, /button\.check-now[\s\S]*?font-size: 0\.7rem;/)
+  assert.match(styles, /button\.check-now[\s\S]*?min-width: 0;/)
+  assert.match(
+    styles,
+    /\.chromium-status__installed code\.chromium-status__installed-version--update\s*\{\s*color: var\(--error\);/
+  )
+})
+
+test('popup keeps check history visible outside the collapsible details', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(
+    source,
+    /<\/details>\s*<div class="chromium-status__history">/
+  )
 })
 
 test('manual update checks open Chromium details when an update is available', async () => {
@@ -75,7 +94,7 @@ test('popup credits the build data project and labels the tracked build', async 
 
 test('popup only warns when the selected build source is stale', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
-  assert.match(source, /current\?\.source\?\.stale/)
+  assert.match(source, /current\.source\?\.stale/)
   assert.match(source, /The selected build source could not be refreshed/)
   assert.doesNotMatch(source, /buildFeedSources\.some/)
 })
