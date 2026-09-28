@@ -108,7 +108,6 @@ const ChromiumInfo = ({
   current = {},
   currentVersion,
   lastSuccessAt,
-  notifySnapshotRevisions,
   onCheckNow,
   woolyssDataStale,
   woolyssError
@@ -149,7 +148,6 @@ const ChromiumInfo = ({
       </li>
       <li>
         <span class="muted-label">Revision: </span><span
-          class="${notifySnapshotRevisions && 'badge'}"
           >${current.revision}</span
         >${' '}(${new Date(current.timestamp * 1000).toLocaleString()})
       </li>
@@ -815,7 +813,6 @@ class App extends Component {
               current="${current}"
               currentVersion="${currentVersion}"
               lastSuccessAt="${lastSuccessAt}"
-              notifySnapshotRevisions="${notifySnapshotRevisions}"
               onCheckNow="${this.onCheckNow}"
               woolyssDataStale="${woolyssDataStale}"
               woolyssError="${woolyssError}"

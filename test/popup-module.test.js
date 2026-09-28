@@ -44,6 +44,7 @@ test('popup keeps spacing between the revision and its timestamp', async () => {
     source,
     /\$\{current\.revision\}<\/span\s*>\$\{' '\}\(\$\{new Date/
   )
+  assert.doesNotMatch(source, /notifySnapshotRevisions && 'badge'/)
 })
 
 test('popup identifies custom colors as badge colors', async () => {
