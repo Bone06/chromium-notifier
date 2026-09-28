@@ -30,6 +30,10 @@ test('popup visibly identifies the experimental UI build', async () => {
     /class="beta-label" title="Experimental UI build">Beta<\/span>/
   )
   assert.match(styles, /\.beta-label\s*\{[\s\S]*?text-transform: uppercase;/)
+  assert.match(
+    source,
+    /class="popup-header__credit"[\s\S]*?class="popup-header__meta"/
+  )
 })
 
 test('popup keeps the update check in the Chromium summary', async () => {

@@ -453,10 +453,6 @@ const Header = ({ version }) => html`
       <p class="popup-header__title">
         Chromium Update Notifications
       </p>
-      <div class="popup-header__meta">
-        <code>${version && `v${version}`}</code>
-        <span class="beta-label" title="Experimental UI build">Beta</span>
-      </div>
       <div class="popup-header__credit">
         <span>Powered by </span>
         <a
@@ -464,6 +460,10 @@ const Header = ({ version }) => html`
           rel="noopener noreferrer"
           target="_blank"
         >Chromium Build Sources</a>
+      </div>
+      <div class="popup-header__meta">
+        <code>${version && `v${version}`}</code>
+        <span class="beta-label" title="Experimental UI build">Beta</span>
       </div>
     </div>
     <div class="header-cell">
