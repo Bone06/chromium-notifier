@@ -21,13 +21,13 @@ test('popup separates the Chromium title from the installed version', async () =
   assert.match(source, /chromium-status__installed-version--update/)
 })
 
-test('popup visibly identifies the experimental SCSS build', async () => {
+test('popup visibly identifies the experimental UI build', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
 
   assert.match(
     source,
-    /class="beta-label" title="Experimental SCSS build">Beta<\/span>/
+    /class="beta-label" title="Experimental UI build">Beta<\/span>/
   )
   assert.match(styles, /\.beta-label\s*\{[\s\S]*?text-transform: uppercase;/)
 })
