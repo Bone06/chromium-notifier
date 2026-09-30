@@ -16,7 +16,7 @@
   "js/theme.js",
   "js/utils.js",
   "js/vendor/htm-3.1.1.js",
-  "js/vendor/preact-11.0.0-rc.2.mjs",
+  "js/vendor/preact-11.0.0.mjs",
   "manifest.json",
   "popup.html",
   "styles.css"

@@ -14,21 +14,21 @@ test('popup module resolves all local imports', async () => {
   )
 })
 
-test('popup pins the verified Preact 11 release candidate', async () => {
+test('popup pins the verified stable Preact 11 release', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   const notices = await readFile(
     new URL('../THIRD_PARTY_NOTICES.txt', import.meta.url),
     'utf8'
   )
   const vendor = await readFile(
-    new URL('../js/vendor/preact-11.0.0-rc.2.mjs', import.meta.url)
+    new URL('../js/vendor/preact-11.0.0.mjs', import.meta.url)
   )
 
-  assert.match(source, /vendor\/preact-11\.0\.0-rc\.2\.mjs/)
-  assert.match(notices, /Preact 11\.0\.0-rc\.2/)
+  assert.match(source, /vendor\/preact-11\.0\.0\.mjs/)
+  assert.match(notices, /Preact 11\.0\.0/)
   assert.equal(
     createHash('sha256').update(vendor).digest('hex'),
-    'eb04ffb03057e7b837b085c6c8f9f0ce14e2707058d286bd09b5769d9b22ebb3'
+    '7f8e0de60ede059be0e5ac12c79734a90840fb8a17b8b3282724433b6c4d8c61'
   )
 })
 
