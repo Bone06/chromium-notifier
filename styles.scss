@@ -382,7 +382,11 @@ button.check-now {
 }
 
 .compact-message { @include mix.message($margin: 0 0 token.$space-2); }
-.error-text { color: var(--error); }
+.error-text {
+  color: var(--error);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
 .header-title { color: var(--strong-text); margin: 0; }
 .supplemental-info { color: var(--muted-text); font-size: smaller; }
 

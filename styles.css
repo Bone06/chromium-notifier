@@ -313,12 +313,14 @@ summary {
 .setting-warning {
   color: var(--error);
   margin: 0 0 0.75rem;
+  overflow-wrap: anywhere;
   white-space: normal;
 }
 
 .management-error {
   color: var(--error);
   margin: 0.75rem 0 0;
+  overflow-wrap: anywhere;
   white-space: normal;
 }
 
@@ -470,11 +472,14 @@ button.check-now:hover {
 
 .compact-message {
   margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
   white-space: normal;
 }
 
 .error-text {
   color: var(--error);
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .header-title {
@@ -489,6 +494,7 @@ button.check-now:hover {
 
 .selected-build-details {
   color: var(--muted-text);
+  overflow-wrap: anywhere;
   white-space: normal;
   display: block;
   margin-top: 0.35rem;

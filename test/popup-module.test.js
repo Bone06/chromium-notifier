@@ -195,6 +195,23 @@ test('popup only warns when the selected build source is stale', async () => {
   assert.doesNotMatch(source, /buildFeedSources\.some/)
 })
 
+test('popup wraps error messages inside their cards', async () => {
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+
+  assert.match(
+    styles,
+    /\.error-text\s*\{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?white-space: normal;/
+  )
+  assert.match(
+    styles,
+    /\.setting-warning\s*\{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?white-space: normal;/
+  )
+  assert.match(
+    styles,
+    /\.management-error\s*\{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?white-space: normal;/
+  )
+})
+
 test('popup guards asynchronous initialization and local storage changes', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /if \(areaName !== 'local'\)/)

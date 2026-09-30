@@ -19,5 +19,6 @@
 @mixin message($color: null, $margin: null) {
   @if $color { color: $color; }
   @if $margin { margin: $margin; }
+  overflow-wrap: anywhere;
   white-space: normal;
 }
