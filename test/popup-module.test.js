@@ -76,7 +76,7 @@ test('popup keeps spacing between the revision and its timestamp', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(
     source,
-    /\$\{current\.revision\}<\/span\s*>\$\{' '\}\(\$\{new Date/
+    /\$\{' '\}\(\$\{new Date\(/
   )
   assert.doesNotMatch(source, /notifySnapshotRevisions && 'badge'/)
 })
@@ -85,9 +85,20 @@ test('popup identifies custom colors as badge colors', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
   assert.match(source, /Use custom badge colors/)
+  assert.match(source, /\['both', 'Chromium \+ extensions'\]/)
+  assert.doesNotMatch(source, /Multiple updates/)
   assert.match(styles, /\.badge-colors input\[type=color\][\s\S]*?border-radius: 50%;/)
   assert.match(styles, /\.badge-colors input\[type=color\][\s\S]*?box-shadow: 0 0 0 1px var\(--border\);/)
   assert.match(styles, /::-webkit-color-swatch[\s\S]*?border-radius: 50%;/)
+})
+
+test('popup visibly identifies a new snapshot revision until it closes', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(source, /hasSnapshotRevisionUpdate\(\{/)
+  assert.match(source, /snapshotRevisionUpdate:[\s\S]*?snapshotRevisionUpdate/)
+  assert.match(source, /class="revision-update-label">New<\/span>/)
+  assert.match(styles, /\.revision-update-label\s*\{[\s\S]*?background: var\(--action-background\);/)
 })
 
 test('popup consistently indents card details from their summaries', async () => {
@@ -98,6 +109,23 @@ test('popup consistently indents card details from their summaries', async () =>
   assert.equal(source.match(/class="details-content"/g)?.length, 3)
   assert.match(styles, /\.details-content\s*\{[\s\S]*?margin-left: 0\.75rem;/)
   assert.match(styles, /\.chromium-status__tracking\s*\{[\s\S]*?margin: 1em 0 0;/)
+})
+
+test('popup vertically centers custom disclosure markers', async () => {
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(styles, /details > summary\s*\{[\s\S]*?list-style: none;/)
+  assert.match(styles, /details > summary::before\s*\{[\s\S]*?top: 0\.725em;/)
+  assert.match(styles, /details\[open\] > summary::before\s*\{[\s\S]*?rotate\(90deg\)/)
+  assert.doesNotMatch(styles, /summary::marker/)
+})
+
+test('popup only disables selection for controls and visual labels', async () => {
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(
+    styles,
+    /button,\s*input,\s*select,\s*img,\s*\.beta-label,\s*\.install-type\s*\{\s*user-select: none;/
+  )
+  assert.doesNotMatch(styles, /(?:body|section|summary|a)\s*\{[^}]*user-select: none;/)
 })
 
 test('popup dropdowns use the shared UI typography and surfaces', async () => {
@@ -145,7 +173,7 @@ test('popup only warns when the selected build source is stale', async () => {
 test('popup guards asynchronous initialization and local storage changes', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /if \(areaName !== 'local'\)/)
-  assert.match(source, /if \(this\.mounted\) \{\s*this\.setState\(config\)/)
+  assert.match(source, /if \(this\.mounted\) \{\s*this\.setState\(\{\s*\.\.\.config,/)
   assert.match(source, /componentWillUnmount \(\) \{\s*this\.mounted = false/)
 })
 

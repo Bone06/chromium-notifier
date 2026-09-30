@@ -15,6 +15,13 @@
 *:disabled,
 .disabled { opacity: token.$disabled-opacity; }
 
+button,
+input,
+select,
+img,
+.beta-label,
+.install-type { user-select: none; }
+
 a {
   color: var(--link);
   text-decoration: none;
@@ -159,9 +166,27 @@ details > summary {
   color: var(--strong-text);
   font-size: 0.875rem;
   font-weight: 600;
+  list-style: none;
+  padding-left: token.$space-3;
+  position: relative;
 
-  &::marker { font-size: 0.75em; }
+  &::-webkit-details-marker { display: none; }
+
+  &::before {
+    border-bottom: 0.25rem solid transparent;
+    border-left: 0.35rem solid currentColor;
+    border-top: 0.25rem solid transparent;
+    content: "";
+    left: 0;
+    position: absolute;
+    top: 0.725em;
+    transform: translateY(-50%);
+    transform-origin: 0.175rem center;
+    transition: transform 140ms ease;
+  }
 }
+
+details[open] > summary::before { transform: translateY(-50%) rotate(90deg); }
 
 .chromium-status {
   display: block;
@@ -258,6 +283,16 @@ summary { cursor: pointer; }
       border-radius: 50%;
     }
   }
+}
+
+.revision-update-label {
+  @extend %compact-label;
+  background: var(--action-background);
+  color: var(--action-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: token.$space-1;
+  user-select: none;
 }
 
 ul {

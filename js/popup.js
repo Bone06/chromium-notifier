@@ -17,6 +17,7 @@ import {
   getInstallTypeLabel,
   getPlatformDisplayName,
   hasExtensionUpdate,
+  hasSnapshotRevisionUpdate,
   matchExtension
 } from './core.js'
 
@@ -111,6 +112,7 @@ const ChromiumInfo = ({
   lastErrorAt,
   lastSuccessAt,
   onCheckNow,
+  snapshotRevisionUpdate,
   woolyssDataStale,
   woolyssError
 }) => {
@@ -166,7 +168,10 @@ const ChromiumInfo = ({
       <li>
         <span class="muted-label">Revision: </span><span
           >${current.revision}</span
-        >${' '}(${new Date(current.timestamp * 1000).toLocaleString()})
+        >${snapshotRevisionUpdate &&
+          html`<span class="revision-update-label">New</span>`}${' '}(${new Date(
+          current.timestamp * 1000
+        ).toLocaleString()})
       </li>
       ${current.links &&
         html`
@@ -640,7 +645,7 @@ const Settings = ({
             ${[
               ['chromium', 'Chromium updates'],
               ['extensions', 'Extension updates'],
-              ['both', 'Multiple updates'],
+              ['both', 'Chromium + extensions'],
               ['error', 'Errors']
             ].map(([name, label]) => html`
               <label>
@@ -679,6 +684,7 @@ class App extends Component {
     managementError: null,
     pendingExtensionIds: [],
     self: {},
+    snapshotRevisionUpdate: false,
     versions: {}
   }
 
@@ -784,17 +790,21 @@ class App extends Component {
     chrome.management.onUninstalled.addListener(this.onManagementChange)
 
     const config = await getConfig()
-    if (this.mounted) {
-      this.setState(config)
-    }
     const current = config.versions?.[config.arch]?.find(
       build => build.tag === config.tag
     )
-    if (
-      config.notifySnapshotRevisions &&
-      current?.channel === 'snapshot' &&
-      current.revision !== config.snapshotRevisionsSeen?.[current.id]
-    ) {
+    const snapshotRevisionUpdate = hasSnapshotRevisionUpdate({
+      current,
+      notifySnapshotRevisions: config.notifySnapshotRevisions,
+      snapshotRevisionsSeen: config.snapshotRevisionsSeen
+    })
+    if (this.mounted) {
+      this.setState({
+        ...config,
+        snapshotRevisionUpdate
+      })
+    }
+    if (snapshotRevisionUpdate) {
       await chrome.storage.local.set({
         snapshotRevisionsSeen: {
           ...config.snapshotRevisionsSeen,
@@ -834,6 +844,7 @@ class App extends Component {
       notifySnapshotRevisions,
       pendingExtensionIds,
       self,
+      snapshotRevisionUpdate,
       tag,
       themeMode,
       useCustomColors,
@@ -866,6 +877,7 @@ class App extends Component {
               lastErrorAt="${lastErrorAt}"
               lastSuccessAt="${lastSuccessAt}"
               onCheckNow="${this.onCheckNow}"
+              snapshotRevisionUpdate="${snapshotRevisionUpdate}"
               woolyssDataStale="${woolyssDataStale}"
               woolyssError="${woolyssError}"
             />
