@@ -80,7 +80,6 @@ button,
 input,
 select,
 img,
-.beta-label,
 .install-type {
   user-select: none;
 }
@@ -215,10 +214,6 @@ section > small {
   flex: 0 0 auto;
   margin: 0 0 0 auto;
 }
-.popup-header .beta-label {
-  font-size: inherit;
-  margin-left: 0;
-}
 .popup-header .header-cell a {
   align-items: center;
   background: var(--surface-subtle);
@@ -327,7 +322,7 @@ summary {
   white-space: normal;
 }
 
-.beta-label, .revision-update-label, .install-type {
+.revision-update-label, .install-type {
   border-radius: 4px;
   padding: 0.1rem 0.3rem;
 }
@@ -501,15 +496,6 @@ button.check-now:hover {
 
 .muted-label {
   color: var(--muted-text);
-}
-
-.beta-label {
-  background: #f9ab00;
-  color: #202124;
-  font-size: 0.7rem;
-  font-weight: bold;
-  margin-left: 0.4rem;
-  text-transform: uppercase;
 }
 
 .header-cell img {

@@ -454,7 +454,6 @@ const Header = ({ version }) => html`
       </div>
       <div class="popup-header__meta">
         <code>${version && `v${version}`}</code>
-        <span class="beta-label" title="Experimental UI build">Beta</span>
       </div>
     </div>
     <div class="header-cell">

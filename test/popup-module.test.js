@@ -49,15 +49,12 @@ test('popup separates the Chromium title from the installed version', async () =
   assert.match(source, /chromium-status__installed-version--update/)
 })
 
-test('popup visibly identifies the experimental UI build', async () => {
+test('popup presents stable release metadata without a beta label', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
 
-  assert.match(
-    source,
-    /class="beta-label" title="Experimental UI build">Beta<\/span>/
-  )
-  assert.match(styles, /\.beta-label\s*\{[\s\S]*?text-transform: uppercase;/)
+  assert.doesNotMatch(source, /beta-label|Experimental UI build/)
+  assert.doesNotMatch(styles, /\.beta-label/)
   assert.match(
     source,
     /class="popup-header__credit"[\s\S]*?class="popup-header__meta"/
@@ -77,7 +74,7 @@ test('popup keeps the update check in the Chromium summary', async () => {
   assert.match(source, /event\.stopPropagation\(\)/)
   assert.match(styles, /\.chromium-status__summary-content\s*\{[\s\S]*?display: inline-flex;/)
   assert.match(styles, /button\.check-now[\s\S]*?margin: 0 0 0 auto;/)
-  assert.match(styles, /button\.check-now[\s\S]*?font-size: 0\.7rem;/)
+  assert.match(styles, /button\.check-now[\s\S]*?font-size: 0\.75rem;/)
   assert.match(styles, /button\.check-now[\s\S]*?min-width: 0;/)
   assert.match(
     styles,
@@ -151,7 +148,7 @@ test('popup only disables selection for controls and visual labels', async () =>
   const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
   assert.match(
     styles,
-    /button,\s*input,\s*select,\s*img,\s*\.beta-label,\s*\.install-type\s*\{\s*user-select: none;/
+    /button,\s*input,\s*select,\s*img,\s*\.install-type\s*\{\s*user-select: none;/
   )
   assert.doesNotMatch(styles, /(?:body|section|summary|a)\s*\{[^}]*user-select: none;/)
 })

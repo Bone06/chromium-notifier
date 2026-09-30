@@ -19,7 +19,6 @@ button,
 input,
 select,
 img,
-.beta-label,
 .install-type { user-select: none; }
 
 a {
@@ -142,7 +141,6 @@ section {
   }
 
   .header-cell { flex: 0 0 auto; margin: 0 0 0 auto; }
-  .beta-label { font-size: inherit; margin-left: 0; }
 
   .header-cell a {
     align-items: center;
@@ -395,16 +393,6 @@ button.check-now {
 }
 
 .muted-label { color: var(--muted-text); }
-
-.beta-label {
-  @extend %compact-label;
-  background: token.$beta-background;
-  color: token.$beta-text;
-  font-size: 0.7rem;
-  font-weight: bold;
-  margin-left: 0.4rem;
-  text-transform: uppercase;
-}
 
 .header-cell img { filter: var(--icon-filter); }
 .last-error { margin-top: token.$space-2; }
