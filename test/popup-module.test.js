@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
@@ -11,6 +12,33 @@ test('popup module resolves all local imports', async () => {
       return true
     }
   )
+})
+
+test('popup pins the verified stable Preact 11 release', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  const notices = await readFile(
+    new URL('../THIRD_PARTY_NOTICES.txt', import.meta.url),
+    'utf8'
+  )
+  const vendor = await readFile(
+    new URL('../js/vendor/preact-11.0.0.mjs', import.meta.url)
+  )
+
+  assert.match(source, /vendor\/preact-11\.0\.0\.mjs/)
+  assert.match(notices, /Preact 11\.0\.0/)
+  assert.equal(
+    createHash('sha256').update(vendor).digest('hex'),
+    '7f8e0de60ede059be0e5ac12c79734a90840fb8a17b8b3282724433b6c4d8c61'
+  )
+})
+
+test('popup gives stable keys to dynamic Preact lists', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+
+  assert.match(source, /<\$\{ExtensionRow\}\s+key="\$\{extension\.id\}"/)
+  assert.match(source, /key="\$\{archOpt\}"/)
+  assert.match(source, /key="\$\{tagOpts\.tag\}"/)
+  assert.match(source, /<label key="\$\{name\}">/)
 })
 
 test('popup separates the Chromium title from the installed version', async () => {

@@ -1,4 +1,4 @@
-import { Component, h, render } from './vendor/preact-10.29.8.js'
+import { Component, h, render } from './vendor/preact-11.0.0.mjs'
 import htm from './vendor/htm-3.1.1.js'
 import {
   getConfig,
@@ -16,9 +16,9 @@ import {
   getExtensionCapabilities,
   getInstallTypeLabel,
   getPlatformDisplayName,
+  groupExtensionsByUpdateInfo,
   hasExtensionUpdate,
-  hasSnapshotRevisionUpdate,
-  matchExtension
+  hasSnapshotRevisionUpdate
 } from './core.js'
 
 const html = htm.bind(h)
@@ -356,20 +356,30 @@ const ExtensionsInfo = ({
   onToggleExtension,
   pendingExtensionIds = []
 }) => {
-  const supported = extensions
-    .filter(ext => extensionsInfo.find(matchExtension(ext)))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  const unsupported = extensions
-    .filter(ext => !supported.find(({ id }) => id === ext.id))
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const {
+    infoById,
+    supported,
+    unsupported
+  } = groupExtensionsByUpdateInfo(extensions, extensionsInfo)
+  const pendingIds = new Set(pendingExtensionIds)
+  const renderExtensionRow = extension => html`
+    <${ExtensionRow}
+      key="${extension.id}"
+      currentVersion="${currentVersion}"
+      extension="${extension}"
+      info="${infoById.get(extension.id)}"
+      onRemoveExtension="${onRemoveExtension}"
+      onToggleExtension="${onToggleExtension}"
+      pending="${pendingIds.has(extension.id)}"
+    />
+  `
 
   return html`
     <details
       open="${extensions.some(extension =>
         hasExtensionUpdate(
           extension,
-          extensionsInfo.find(({ id }) => id === extension.id)
+          infoById.get(extension.id)
         )
       )}"
     >
@@ -388,37 +398,13 @@ const ExtensionsInfo = ({
           </p>
         `}
       <ul class="extensions">
-        ${supported.map(ext => {
-          const info = extensionsInfo.find(matchExtension(ext))
-          return html`
-            <${ExtensionRow}
-              currentVersion="${currentVersion}"
-              extension="${ext}"
-              info="${info}"
-              onRemoveExtension="${onRemoveExtension}"
-              onToggleExtension="${onToggleExtension}"
-              pending="${pendingExtensionIds.includes(ext.id)}"
-            />
-          `
-        })}
+        ${supported.map(renderExtensionRow)}
       </ul>
       ${unsupported.length > 0 &&
         html`
           <p style="margin-bottom: 0;">No update info available:</p>
           <ul class="extensions">
-            ${unsupported.map(ext => {
-              const info = extensionsInfo.find(({ id }) => id === ext.id)
-              return html`
-                <${ExtensionRow}
-                  currentVersion="${currentVersion}"
-                  extension="${ext}"
-                  info="${info}"
-                  onRemoveExtension="${onRemoveExtension}"
-                  onToggleExtension="${onToggleExtension}"
-                  pending="${pendingExtensionIds.includes(ext.id)}"
-                />
-              `
-            })}
+            ${unsupported.map(renderExtensionRow)}
           </ul>
         `}
       ${extensionsErrors.length > 0 &&
@@ -437,7 +423,7 @@ const ExtensionsInfo = ({
                 totalBatches,
                 updateUrl
               }) => html`
-                <li>
+                <li key="${`${updateUrl}:${batch || 0}`}">
                   <code>${new URL(updateUrl).host}</code>${totalBatches > 1
                     ? ` (batch ${batch}/${totalBatches})`
                     : ''}: ${message}
@@ -550,7 +536,10 @@ const Settings = ({
             `}
           ${Object.keys(versions).map(
             archOpt => html`
-              <option selected="${archOpt === arch}" value="${archOpt}"
+              <option
+                key="${archOpt}"
+                selected="${archOpt === arch}"
+                value="${archOpt}"
                 >${getPlatformDisplayName(archOpt)}</option
               >
             `
@@ -571,7 +560,10 @@ const Settings = ({
             versions[arch] &&
             versions[arch].map(
               tagOpts => html`
-                <option selected="${tagOpts.tag === tag}" value="${tagOpts.tag}"
+                <option
+                  key="${tagOpts.tag}"
+                  selected="${tagOpts.tag === tag}"
+                  value="${tagOpts.tag}"
                   >${getCompactBuildName(tagOpts.displayName || tagOpts.tag)}</option
                 >
               `
@@ -648,7 +640,7 @@ const Settings = ({
               ['both', 'Chromium + extensions'],
               ['error', 'Errors']
             ].map(([name, label]) => html`
-              <label>
+              <label key="${name}">
                 <input
                   name="${name}"
                   onChange="${changeBadgeColor}"
