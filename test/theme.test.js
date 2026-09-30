@@ -40,5 +40,5 @@ test('popup exposes all theme modes and browser-default CSS', async () => {
   assert.match(popup, />Light<\/option/)
   assert.match(popup, />Dark<\/option/)
   assert.match(styles, /prefers-color-scheme: dark/)
-  assert.match(styles, /:root\[data-theme="dark"\]/)
+  assert.match(styles, /:root\[data-theme=(?:"dark"|dark)\]/)
 })

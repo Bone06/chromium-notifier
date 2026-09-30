@@ -1,0 +1,29 @@
+$base-font-size: 13px;
+$popup-min-width: 390px;
+$disabled-opacity: 0.5;
+$radius-small: 4px;
+$radius-medium: 10px;
+$radius-large: 12px;
+$space-1: 0.25rem;
+$space-2: 0.5rem;
+$space-3: 0.75rem;
+$space-4: 1rem;
+
+$themes: (
+  light: (background: #f8f9fa, surface: #ffffff, surface-subtle: #f8f9fa,
+    border: #dadce0, control-background: #ffffff, accent-soft: #e8f0fe,
+    action-background: #d2e3fc, action-hover: #c6dafc,
+    action-text: #174ea6,
+    success: #1e8e3e,
+    error: #b00020, icon-filter: none, install-type-background: #e8eaed,
+    install-type-text: #3c4043, link: #3367d6, muted-text: #80868b,
+    strong-text: #202124, text: #5f6368, color-scheme: light),
+  dark: (background: #202124, surface: #292a2d, surface-subtle: #242528,
+    border: #3c4043, control-background: #292a2d, accent-soft: #30445f,
+    action-background: #3c4043, action-hover: #4a4d51,
+    action-text: #8ab4f8,
+    success: #81c995,
+    error: #f28b82, icon-filter: invert(1), install-type-background: #3c4043,
+    install-type-text: #e8eaed, link: #8ab4f8, muted-text: #9aa0a6,
+    strong-text: #f1f3f4, text: #bdc1c6, color-scheme: dark)
+);

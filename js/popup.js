@@ -1,4 +1,4 @@
-import { Component, h, render } from './vendor/preact-10.29.8.js'
+import { Component, h, render } from './vendor/preact-11.0.0.mjs'
 import htm from './vendor/htm-3.1.1.js'
 import {
   getConfig,
@@ -16,8 +16,9 @@ import {
   getExtensionCapabilities,
   getInstallTypeLabel,
   getPlatformDisplayName,
+  groupExtensionsByUpdateInfo,
   hasExtensionUpdate,
-  matchExtension
+  hasSnapshotRevisionUpdate
 } from './core.js'
 
 const html = htm.bind(h)
@@ -107,8 +108,11 @@ const ChromiumInfo = ({
   chromiumOpenRequest,
   current = {},
   currentVersion,
+  lastAttemptAt,
+  lastErrorAt,
   lastSuccessAt,
   onCheckNow,
+  snapshotRevisionUpdate,
   woolyssDataStale,
   woolyssError
 }) => {
@@ -123,22 +127,37 @@ const ChromiumInfo = ({
   }
 
   return html`
+  <div class="chromium-status">
   <details
     key="${chromiumOpenRequest}"
     open="${versionStatus === 'update-available'}"
   >
-    <summary>
-      <span>Chromium </span>
-      <code>${currentVersion ? `v${currentVersion}` : 'version unavailable'}</code>
-      <button
-        aria-busy="${checking}"
-        aria-live="polite"
-        class="check-now"
-        disabled="${checking}"
-        onClick="${checkForUpdates}"
-        type="button"
-      >${checking ? 'Checking…' : 'Check for Updates'}</button>
+    <summary class="chromium-status__summary">
+      <span class="chromium-status__summary-content">
+        <span>Chromium</span>
+      </span>
+      <span class="chromium-status__installed">
+        <span>
+          <span>Installed: </span>
+          <code
+            class="${versionStatus === 'update-available'
+              ? 'chromium-status__installed-version--update'
+              : ''}"
+          >${currentVersion ? `v${currentVersion}` : 'version unavailable'}</code>
+        </span>
+        <button
+          aria-busy="${checking}"
+          aria-label="${checking ? 'Checking for updates' : 'Check for updates'}"
+          aria-live="polite"
+          class="check-now"
+          disabled="${checking}"
+          onClick="${checkForUpdates}"
+          title="Check for updates"
+          type="button"
+        >${checking ? 'Checking…' : 'Check now'}</button>
+      </span>
     </summary>
+    <div class="details-content">
     <ul>
       <li>
         <span class="muted-label">Available: </span>
@@ -149,7 +168,10 @@ const ChromiumInfo = ({
       <li>
         <span class="muted-label">Revision: </span><span
           >${current.revision}</span
-        >${' '}(${new Date(current.timestamp * 1000).toLocaleString()})
+        >${snapshotRevisionUpdate &&
+          html`<span class="revision-update-label">New</span>`}${' '}(${new Date(
+          current.timestamp * 1000
+        ).toLocaleString()})
       </li>
       ${current.links &&
         html`
@@ -166,7 +188,7 @@ const ChromiumInfo = ({
           </li>
         `}
     </ul>
-    <div style="font-size: smaller; margin-top: 1em">
+    <div class="chromium-status__tracking">
       ${woolyssDataStale &&
         html`
           <p aria-live="polite" class="setting-warning">
@@ -174,13 +196,12 @@ const ChromiumInfo = ({
             ${lastSuccessAt
               ? new Date(lastSuccessAt).toLocaleString()
               : 'the last successful check'}.
-            ${woolyssError}
           </p>
         `}
       ${current.source?.stale &&
         html`
           <p aria-live="polite" class="setting-warning">
-            This build source could not be refreshed. Showing cached source
+            The selected build source could not be refreshed. Showing cached source
             data from ${new Date(current.source.lastSuccessAt).toLocaleString()}.
             ${current.source.error}
           </p>
@@ -202,10 +223,33 @@ const ChromiumInfo = ({
         href="${current.releaseUrl}"
         rel="noopener noreferrer"
         target="_blank"
-        >${current.source.name}</a
+      >${current.source.name}</a
       >
     </div>
+    </div>
   </details>
+  <div class="chromium-status__history">
+      <small>
+        ${lastAttemptAt
+          ? `Last check attempt: ${new Date(lastAttemptAt).toLocaleString()}`
+          : `Waiting for data…`}
+      </small>
+      ${lastSuccessAt &&
+        html`
+          <small>
+            Last successful check: ${new Date(lastSuccessAt).toLocaleString()}
+          </small>
+        `}
+      ${woolyssError &&
+        html`
+          <small aria-live="polite" class="error-text">
+            Last error${lastErrorAt
+              ? ` (${new Date(lastErrorAt).toLocaleString()})`
+              : ''}: ${woolyssError}
+          </small>
+        `}
+  </div>
+  </div>
 `
 }
 
@@ -238,30 +282,34 @@ const ExtensionRow = ({
     : 'Enable'
 
   return html`
-    <li>
-      <div class="${extension.enabled ? '' : ' disabled'}">
+    <li class="extension-row">
+      <div class="extension-row__content${extension.enabled ? '' : ' disabled'}">
         <input
           aria-label="${toggleTitle} ${extension.name}"
           checked="${extension.enabled}"
           disabled="${pending || !canToggle}"
           id="${extension.id}"
           onChange="${onToggleExtension}"
-          style="margin-right: 0.75em"
+          class="extension-row__toggle"
           title="${toggleTitle}"
           type="checkbox"
         />
         ${extension.homepageUrl
           ? html`
               <a
+                class="extension-row__name"
                 href="${extension.homepageUrl}"
                 rel="noopener noreferrer"
                 target="_blank"
+                title="${extension.name}"
               >
-                <span>${extension.name} </span>
+                ${extension.name}
               </a>
             `
-          : `${extension.name} `}
-        <code>
+          : html`<span class="extension-row__name" title="${extension.name}"
+              >${extension.name}</span
+            >`}
+        <code class="extension-row__version">
           <span>v${extension.version} </span>
           ${hasExtensionUpdate(extension, info) &&
             downloadUrl &&
@@ -277,7 +325,7 @@ const ExtensionRow = ({
         ${installTypeLabel &&
           html`<span class="install-type">${installTypeLabel}</span>`}
       </div>
-      <div>
+      <div class="extension-row__actions">
         <button
           aria-label="${canRemove
             ? `Remove ${extension.name}`
@@ -308,24 +356,35 @@ const ExtensionsInfo = ({
   onToggleExtension,
   pendingExtensionIds = []
 }) => {
-  const supported = extensions
-    .filter(ext => extensionsInfo.find(matchExtension(ext)))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  const unsupported = extensions
-    .filter(ext => !supported.find(({ id }) => id === ext.id))
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const {
+    infoById,
+    supported,
+    unsupported
+  } = groupExtensionsByUpdateInfo(extensions, extensionsInfo)
+  const pendingIds = new Set(pendingExtensionIds)
+  const renderExtensionRow = extension => html`
+    <${ExtensionRow}
+      key="${extension.id}"
+      currentVersion="${currentVersion}"
+      extension="${extension}"
+      info="${infoById.get(extension.id)}"
+      onRemoveExtension="${onRemoveExtension}"
+      onToggleExtension="${onToggleExtension}"
+      pending="${pendingIds.has(extension.id)}"
+    />
+  `
 
   return html`
     <details
       open="${extensions.some(extension =>
         hasExtensionUpdate(
           extension,
-          extensionsInfo.find(({ id }) => id === extension.id)
+          infoById.get(extension.id)
         )
       )}"
     >
       <summary>${extensions.length} Extensions</summary>
+      <div class="details-content">
       ${managementError &&
         html`
           <p aria-live="polite" class="management-error">
@@ -339,37 +398,13 @@ const ExtensionsInfo = ({
           </p>
         `}
       <ul class="extensions">
-        ${supported.map(ext => {
-          const info = extensionsInfo.find(matchExtension(ext))
-          return html`
-            <${ExtensionRow}
-              currentVersion="${currentVersion}"
-              extension="${ext}"
-              info="${info}"
-              onRemoveExtension="${onRemoveExtension}"
-              onToggleExtension="${onToggleExtension}"
-              pending="${pendingExtensionIds.includes(ext.id)}"
-            />
-          `
-        })}
+        ${supported.map(renderExtensionRow)}
       </ul>
       ${unsupported.length > 0 &&
         html`
           <p style="margin-bottom: 0;">No update info available:</p>
           <ul class="extensions">
-            ${unsupported.map(ext => {
-              const info = extensionsInfo.find(({ id }) => id === ext.id)
-              return html`
-                <${ExtensionRow}
-                  currentVersion="${currentVersion}"
-                  extension="${ext}"
-                  info="${info}"
-                  onRemoveExtension="${onRemoveExtension}"
-                  onToggleExtension="${onToggleExtension}"
-                  pending="${pendingExtensionIds.includes(ext.id)}"
-                />
-              `
-            })}
+            ${unsupported.map(renderExtensionRow)}
           </ul>
         `}
       ${extensionsErrors.length > 0 &&
@@ -388,7 +423,7 @@ const ExtensionsInfo = ({
                 totalBatches,
                 updateUrl
               }) => html`
-                <li>
+                <li key="${`${updateUrl}:${batch || 0}`}">
                   <code>${new URL(updateUrl).host}</code>${totalBatches > 1
                     ? ` (batch ${batch}/${totalBatches})`
                     : ''}: ${message}
@@ -397,24 +432,28 @@ const ExtensionsInfo = ({
             </ul>
           </div>
         `}
+      </div>
     </details>
   `
 }
 
 const Header = ({ version }) => html`
-  <div>
-    <div>
-      <p class="header-title">
-        <strong>Chromium Update Notifications </strong>
-        <code class="muted-label">${version && `v${version}`}</code>
+  <div class="popup-header">
+    <img class="popup-header__icon" alt="" src="../img/icon_48.png" />
+    <div class="popup-header__content">
+      <p class="popup-header__title">
+        Chromium Update Notifications
       </p>
-      <div class="supplemental-info">
+      <div class="popup-header__credit">
         <span>Powered by </span>
         <a
           href="${BUILD_SOURCES_PROJECT_URL}"
           rel="noopener noreferrer"
           target="_blank"
         >Chromium Build Sources</a>
+      </div>
+      <div class="popup-header__meta">
+        <code>${version && `v${version}`}</code>
       </div>
     </div>
     <div class="header-cell">
@@ -437,9 +476,9 @@ class Section extends Component {
     this.setState({ errorMsg: error.message })
   }
 
-  render ({ children }, { errorMsg }) {
+  render ({ children, className = '' }, { errorMsg }) {
     return html`
-      <section>
+      <section class="card ${className}">
         ${errorMsg
           ? html`
               <small aria-live="polite" class="error-text">${errorMsg}</small>
@@ -464,7 +503,7 @@ const Settings = ({
 }) => html`
   <details open="${selectionStatus !== 'valid'}">
     <summary>Settings</summary>
-    <div>
+    <div class="details-content">
       ${selectionStatus === 'platform-unavailable' &&
         html`
           <p class="setting-warning">
@@ -496,7 +535,10 @@ const Settings = ({
             `}
           ${Object.keys(versions).map(
             archOpt => html`
-              <option selected="${archOpt === arch}" value="${archOpt}"
+              <option
+                key="${archOpt}"
+                selected="${archOpt === arch}"
+                value="${archOpt}"
                 >${getPlatformDisplayName(archOpt)}</option
               >
             `
@@ -517,7 +559,10 @@ const Settings = ({
             versions[arch] &&
             versions[arch].map(
               tagOpts => html`
-                <option selected="${tagOpts.tag === tag}" value="${tagOpts.tag}"
+                <option
+                  key="${tagOpts.tag}"
+                  selected="${tagOpts.tag === tag}"
+                  value="${tagOpts.tag}"
                   >${getCompactBuildName(tagOpts.displayName || tagOpts.tag)}</option
                 >
               `
@@ -591,10 +636,10 @@ const Settings = ({
             ${[
               ['chromium', 'Chromium updates'],
               ['extensions', 'Extension updates'],
-              ['both', 'Multiple updates'],
+              ['both', 'Chromium + extensions'],
               ['error', 'Errors']
             ].map(([name, label]) => html`
-              <label>
+              <label key="${name}">
                 <input
                   name="${name}"
                   onChange="${changeBadgeColor}"
@@ -630,6 +675,7 @@ class App extends Component {
     managementError: null,
     pendingExtensionIds: [],
     self: {},
+    snapshotRevisionUpdate: false,
     versions: {}
   }
 
@@ -735,17 +781,21 @@ class App extends Component {
     chrome.management.onUninstalled.addListener(this.onManagementChange)
 
     const config = await getConfig()
-    if (this.mounted) {
-      this.setState(config)
-    }
     const current = config.versions?.[config.arch]?.find(
       build => build.tag === config.tag
     )
-    if (
-      config.notifySnapshotRevisions &&
-      current?.channel === 'snapshot' &&
-      current.revision !== config.snapshotRevisionsSeen?.[current.id]
-    ) {
+    const snapshotRevisionUpdate = hasSnapshotRevisionUpdate({
+      current,
+      notifySnapshotRevisions: config.notifySnapshotRevisions,
+      snapshotRevisionsSeen: config.snapshotRevisionsSeen
+    })
+    if (this.mounted) {
+      this.setState({
+        ...config,
+        snapshotRevisionUpdate
+      })
+    }
+    if (snapshotRevisionUpdate) {
       await chrome.storage.local.set({
         snapshotRevisionsSeen: {
           ...config.snapshotRevisionsSeen,
@@ -785,6 +835,7 @@ class App extends Component {
       notifySnapshotRevisions,
       pendingExtensionIds,
       self,
+      snapshotRevisionUpdate,
       tag,
       themeMode,
       useCustomColors,
@@ -798,7 +849,8 @@ class App extends Component {
     const selectionStatus = getBuildSelectionStatus({ arch, tag, versions })
 
     return html`
-      <${Section}>
+      <main class="popup">
+      <${Section} className="header-card">
         <${Header} version="${self && self.version}"/>
       <//>
 
@@ -812,8 +864,11 @@ class App extends Component {
               chromiumOpenRequest="${chromiumOpenRequest}"
               current="${current}"
               currentVersion="${currentVersion}"
+              lastAttemptAt="${lastAttemptAt}"
+              lastErrorAt="${lastErrorAt}"
               lastSuccessAt="${lastSuccessAt}"
               onCheckNow="${this.onCheckNow}"
+              snapshotRevisionUpdate="${snapshotRevisionUpdate}"
               woolyssDataStale="${woolyssDataStale}"
               woolyssError="${woolyssError}"
             />
@@ -852,34 +907,7 @@ class App extends Component {
         />
       <//>
 
-      <${Section}>
-        ${current?.source?.stale &&
-          html`
-            <small aria-live="polite" class="setting-warning">
-              The selected build source could not be refreshed and is using
-              cached data.
-            </small>
-          `}
-        <small class="supplemental-info">
-          ${lastAttemptAt
-            ? `Last check attempt: ${new Date(lastAttemptAt).toLocaleString()}`
-            : `Waiting for data…`}
-        </small>
-        ${lastSuccessAt &&
-          html`
-            <small class="supplemental-info">
-              Last successful check: ${new Date(lastSuccessAt).toLocaleString()}
-            </small>
-          `}
-        ${woolyssError &&
-          html`
-            <small aria-live="polite" class="error-text last-error">
-              Last error${lastErrorAt
-                ? ` (${new Date(lastErrorAt).toLocaleString()})`
-                : ''}: ${woolyssError}
-            </small>
-          `}
-      <//>
+      </main>
     `
   }
 }

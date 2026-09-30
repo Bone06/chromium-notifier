@@ -1,0 +1,23 @@
+@use "sass:map";
+@use "tokens";
+
+@mixin theme($name) {
+  @each $property, $value in map.get(tokens.$themes, $name) {
+    @if $property == color-scheme {
+      color-scheme: $value;
+    } @else {
+      --#{$property}: #{$value};
+    }
+  }
+}
+
+@mixin focus-ring {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+@mixin message($color: null, $margin: null) {
+  @if $color { color: $color; }
+  @if $margin { margin: $margin; }
+  white-space: normal;
+}

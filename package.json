@@ -5,14 +5,18 @@
     "node": ">=24.11.0"
   },
   "scripts": {
-    "check": "npm run lint && npm test",
+    "build:css": "node scripts/styles.js",
+    "check": "npm run lint && npm run check:css && npm test",
+    "check:css": "node scripts/styles.js --check",
     "lint": "eslint eslint.config.js js scripts test",
     "package": "node scripts/stage-extension.js",
+    "prepackage": "npm run check:css",
     "test": "node --test"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "eslint": "10.10.0",
-    "globals": "17.12.0"
+    "globals": "17.12.0",
+    "sass": "1.105.0"
   }
 }
