@@ -5,12 +5,17 @@ import { join, posix, relative } from 'node:path'
 import test from 'node:test'
 import {
   readReleaseFiles,
+  RELEASE_ASSET_NAME,
   stageExtension
 } from '../scripts/stage-extension.js'
 
 const projectRoot = new URL('../', import.meta.url)
 const readProjectFile = (path, encoding = undefined) =>
   readFile(new URL(path, projectRoot), encoding)
+
+test('release asset uses the stable update filename', () => {
+  assert.equal(RELEASE_ASSET_NAME, 'chromium-notifier.crx')
+})
 
 const collectFiles = async (root, directory = root) => {
   const files = []

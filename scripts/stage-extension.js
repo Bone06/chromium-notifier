@@ -11,7 +11,8 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const releaseFilesPath = resolve(root, 'release-files.json')
-const defaultOutput = resolve(root, 'build', 'extension')
+export const RELEASE_ASSET_NAME = 'chromium-notifier.crx'
+const defaultOutput = resolve(root, 'build', RELEASE_ASSET_NAME.slice(0, -4))
 
 export const readReleaseFiles = async () => {
   const files = JSON.parse(await readFile(releaseFilesPath, 'utf8'))

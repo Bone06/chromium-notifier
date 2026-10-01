@@ -84,12 +84,18 @@ generated `styles.css` with it. `npm run check` rejects stale generated CSS,
 and the release package intentionally contains only `styles.css`, not the SCSS
 sources or Sass tooling.
 
-`npm run package` recreates `build/extension` from the explicit
+`npm run package` recreates `build/chromium-notifier` from the explicit
 `release-files.json` allowlist. The staging directory contains only runtime
 assets and required license notices; tests, development dependencies, source
 documentation and repository metadata are excluded. Use this staged directory
 when creating a signed CRX with the established private signing key. The key
 must remain outside the repository, staging directory and release artifacts.
+
+Chromium consequently writes the signed package as
+`build/chromium-notifier.crx`. Every GitHub release must upload that file with
+both its asset filename and display label set exactly to
+`chromium-notifier.crx`; the stable update URL and existing installations rely
+on that version-independent name.
 
 ## Historical upstream notice
 
