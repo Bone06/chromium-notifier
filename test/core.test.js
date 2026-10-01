@@ -66,12 +66,12 @@ test('manifest pins the final extension id', async () => {
   assert.equal(manifest.version_name, '4.1.0')
 })
 
-test('gupdate stays on the currently published release', async () => {
+test('gupdate publishes the current release', async () => {
   const text = await readFile(new URL('../gupdate.xml', import.meta.url), 'utf8')
   const [{ app, updatecheck }] = parseUpdateManifest(text)
 
   assert.equal(app.appid, 'agmndnjhilhcplobmmcbnjokdbcahlce')
-  assert.equal(updatecheck.version, '4.0.0')
+  assert.equal(updatecheck.version, '4.1.0')
   assert.equal(
     updatecheck.codebase,
     'https://github.com/Bone06/chromium-notifier/releases/latest/download/chromium-notifier.crx'

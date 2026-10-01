@@ -8,11 +8,11 @@ version—or optionally a newer snapshot revision—is available.
 It can also check installed extensions for updates and provide basic extension
 management where Chromium permits it.
 
-![Chromium Update Notifications 4.0.0 popup](img/screenshot.png)
+![Chromium Update Notifications 4.1.0 popup](img/screenshot.png)
 
 ## Current development status
 
-- The current stable release is Manifest V3 version 4.0.0.
+- The current stable release is Manifest V3 version 4.1.0.
 - Build data comes from the separate [Chromatic Feed](https://github.com/Bone06/chromatic-feed)
   aggregator, not
   directly from Woolyss or individual build repositories.
@@ -21,7 +21,7 @@ management where Chromium permits it.
 - The extension uses the signed production HTTPS feed and revalidates it with
   ETag / `If-None-Match`; unchanged `304` responses retain the previously
   verified local cache.
-- The update manifest targets the 4.0.0 CRX asset from this repository's
+- The update manifest targets the 4.1.0 CRX asset from this repository's
   [latest GitHub release](https://github.com/Bone06/chromium-notifier/releases/latest).
 
 ## Features
