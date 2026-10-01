@@ -22,8 +22,8 @@ import {
 } from './core.js'
 
 const html = htm.bind(h)
-const BUILD_SOURCES_PROJECT_URL =
-  'https://github.com/Bone06/chromium-build-sources'
+const CHROMATIC_FEED_PROJECT_URL =
+  'https://github.com/Bone06/chromatic-feed'
 
 /*
  * Event handlers
@@ -447,10 +447,10 @@ const Header = ({ version }) => html`
       <div class="popup-header__credit">
         <span>Powered by </span>
         <a
-          href="${BUILD_SOURCES_PROJECT_URL}"
+          href="${CHROMATIC_FEED_PROJECT_URL}"
           rel="noopener noreferrer"
           target="_blank"
-        >Chromium Build Sources</a>
+        >Chromatic Feed</a>
       </div>
       <div class="popup-header__meta">
         <code>${version && `v${version}`}</code>

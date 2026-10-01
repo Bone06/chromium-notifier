@@ -180,11 +180,11 @@ test('popup extensions follow the card text hierarchy', async () => {
 test('popup credits the build data project and labels the tracked build', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /<span>Powered by <\/span>/)
-  assert.match(source, />Chromium Build Sources<\/a>/)
+  assert.match(source, />Chromatic Feed<\/a>/)
   assert.match(source, /<span>Tracking <\/span>/)
   assert.match(
     source,
-    /https:\/\/github\.com\/Bone06\/chromium-build-sources/
+    /https:\/\/github\.com\/Bone06\/chromatic-feed/
   )
 })
 

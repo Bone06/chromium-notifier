@@ -38,7 +38,7 @@ const fetchBuildFeed = async config => {
     { headers },
     {
       allowNotModified: true,
-      label: 'Chromium build source feed'
+      label: 'Chromatic Feed'
     }
   )
   if (response.notModified) {
@@ -49,7 +49,7 @@ const fetchBuildFeed = async config => {
   }
 
   const signatureText = await fetchText(BUILD_FEED_SIGNATURE_URL, {}, {
-    label: 'Chromium build source feed signature',
+    label: 'Chromatic Feed signature',
     maxResponseBytes: 4096
   })
   try {

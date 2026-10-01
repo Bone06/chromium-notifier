@@ -13,7 +13,8 @@ management where Chromium permits it.
 ## Current development status
 
 - The current stable release is Manifest V3 version 4.0.0.
-- Build data comes from the separate Chromium Build Sources aggregator, not
+- Build data comes from the separate [Chromatic Feed](https://github.com/Bone06/chromatic-feed)
+  aggregator, not
   directly from Woolyss or individual build repositories.
 - Feed bytes are verified with an embedded ECDSA P-256 public key before JSON
   parsing and strict schema validation.
