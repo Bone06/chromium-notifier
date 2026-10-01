@@ -6,6 +6,12 @@ export const TRUSTED_FEED_KEYS = Object.freeze({
     kty: 'EC',
     x: 'uHzo7ldW70BMSIj5eeKBquctE_LawKdPLyxyOZUKUN8',
     y: 'UyBtCc-LLYfxaTxCHftjSuxnQhqlGi-4E8Ygeu0nsj4'
+  }),
+  'feed-2026-02': Object.freeze({
+    crv: 'P-256',
+    kty: 'EC',
+    x: 'HVhPYrX1tJx3dsvWlk8vwZhKToG0hxvcMIYFS21n9lA',
+    y: '7MKsQqslWpgZkqIFvJWDmS1va9VNInkI06GKJP_DbMA'
   })
 })
 
