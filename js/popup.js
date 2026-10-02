@@ -112,10 +112,18 @@ const ChromiumInfo = ({
   lastErrorAt,
   lastSuccessAt,
   onCheckNow,
+  selectionStatus,
   snapshotRevisionUpdate,
   woolyssDataStale,
   woolyssError
 }) => {
+  const hasCurrent = Boolean(current.version)
+  const unavailableMessage = {
+    'platform-required': 'Choose a platform in Settings to track Chromium updates.',
+    'platform-unavailable': 'Choose an available platform in Settings.',
+    'tag-required': 'Choose a Chromium build in Settings to track updates.',
+    'tag-unavailable': 'Choose an available Chromium build in Settings.'
+  }[selectionStatus] || 'Chromium update information is not available yet.'
   const versionStatus = getChromiumVersionStatus(
     currentVersion,
     current.version
@@ -130,7 +138,7 @@ const ChromiumInfo = ({
   <div class="chromium-status">
   <details
     key="${chromiumOpenRequest}"
-    open="${versionStatus === 'update-available'}"
+    open="${!hasCurrent || versionStatus === 'update-available'}"
   >
     <summary class="chromium-status__summary">
       <span class="chromium-status__summary-content">
@@ -158,6 +166,8 @@ const ChromiumInfo = ({
       </span>
     </summary>
     <div class="details-content">
+    ${hasCurrent
+      ? html`
     <ul>
       <li>
         <span class="muted-label">Available: </span>
@@ -226,6 +236,12 @@ const ChromiumInfo = ({
       >${current.source.name}</a
       >
     </div>
+      `
+      : html`
+        <p aria-live="polite" class="compact-message">
+          ${unavailableMessage}
+        </p>
+      `}
     </div>
   </details>
   <div class="chromium-status__history">
@@ -854,26 +870,22 @@ class App extends Component {
         <${Header} version="${self && self.version}"/>
       <//>
 
-      ${arch &&
-        tag &&
-        current &&
-        html`
-          <${Section}>
-            <${ChromiumInfo}
-              checking="${checking}"
-              chromiumOpenRequest="${chromiumOpenRequest}"
-              current="${current}"
-              currentVersion="${currentVersion}"
-              lastAttemptAt="${lastAttemptAt}"
-              lastErrorAt="${lastErrorAt}"
-              lastSuccessAt="${lastSuccessAt}"
-              onCheckNow="${this.onCheckNow}"
-              snapshotRevisionUpdate="${snapshotRevisionUpdate}"
-              woolyssDataStale="${woolyssDataStale}"
-              woolyssError="${woolyssError}"
-            />
-          <//>
-        `}
+      <${Section}>
+        <${ChromiumInfo}
+          checking="${checking}"
+          chromiumOpenRequest="${chromiumOpenRequest}"
+          current="${current}"
+          currentVersion="${currentVersion}"
+          lastAttemptAt="${lastAttemptAt}"
+          lastErrorAt="${lastErrorAt}"
+          lastSuccessAt="${lastSuccessAt}"
+          onCheckNow="${this.onCheckNow}"
+          selectionStatus="${selectionStatus}"
+          snapshotRevisionUpdate="${snapshotRevisionUpdate}"
+          woolyssDataStale="${woolyssDataStale}"
+          woolyssError="${woolyssError}"
+        />
+      <//>
       ${extensionsTrack &&
         html`
           <${Section}>

@@ -4,6 +4,8 @@ import {
   fetchText,
   fetchTextResponse,
   getUserAgentData,
+  isTransientNetworkError,
+  retryTransientRequest,
 } from './utils.js'
 import {
   getBadgePresentation,
@@ -22,7 +24,7 @@ const BUILD_FEED_URL =
 const BUILD_FEED_SIGNATURE_URL = `${BUILD_FEED_URL}.sig`
 let currentUpdate
 
-const fetchBuildFeed = async config => {
+const fetchBuildFeedOnce = async config => {
   const headers = {}
   if (
     config.buildFeedEtag &&
@@ -71,6 +73,22 @@ const fetchBuildFeed = async config => {
     )
   }
 }
+
+const fetchBuildFeed = config => retryTransientRequest(
+  () => fetchBuildFeedOnce(config),
+  {
+    shouldRetry: error => {
+      const retry = isTransientNetworkError(error)
+      if (retry) {
+        console.warn(
+          'Transient Chromatic Feed request failed; retrying once.',
+          error
+        )
+      }
+      return retry
+    }
+  }
+)
 
 const update = async (...args) => {
   const config = await getConfig()

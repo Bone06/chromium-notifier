@@ -15,7 +15,39 @@ const addIfNew = (arr = [], item) =>
   item === undefined ? arr : [...new Set([...arr]).add(item)]
 
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15000
+export const DEFAULT_RETRY_DELAY_MS = 2000
 export const MAX_REMOTE_RESPONSE_BYTES = 1024 * 1024
+
+export class RequestTimeoutError extends Error {
+  constructor (label, timeoutMs) {
+    super(`${label} timed out after ${timeoutMs} ms`)
+    this.name = 'RequestTimeoutError'
+  }
+}
+
+export const isTransientNetworkError = error =>
+  error instanceof RequestTimeoutError || error instanceof TypeError
+
+const wait = delayMs => new Promise(resolve => setTimeout(resolve, delayMs))
+
+export const retryTransientRequest = async (
+  request,
+  {
+    delayMs = DEFAULT_RETRY_DELAY_MS,
+    retries = 1,
+    shouldRetry = isTransientNetworkError,
+    waitForRetry = wait
+  } = {}
+) => {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await request()
+    } catch (error) {
+      if (attempt >= retries || !shouldRetry(error)) throw error
+      await waitForRetry(delayMs)
+    }
+  }
+}
 
 const readResponseText = async (response, label, maxResponseBytes) => {
   const contentLength = Number(response.headers.get('content-length'))
@@ -64,7 +96,7 @@ export const fetchTextResponse = async (
   } = {}
 ) => {
   const controller = new AbortController()
-  const timeoutError = new Error(`${label} timed out after ${timeoutMs} ms`)
+  const timeoutError = new RequestTimeoutError(label, timeoutMs)
   const timeout = setTimeout(() => controller.abort(timeoutError), timeoutMs)
 
   try {

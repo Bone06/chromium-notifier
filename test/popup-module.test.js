@@ -195,6 +195,14 @@ test('popup only warns when the selected build source is stale', async () => {
   assert.doesNotMatch(source, /buildFeedSources\.some/)
 })
 
+test('popup keeps Chromium status and manual checks visible without feed data', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(source, /Chromium update information is not available yet\./)
+  assert.match(source, /Choose a Chromium build in Settings to track updates\./)
+  assert.match(source, /const hasCurrent = Boolean\(current\.version\)/)
+  assert.doesNotMatch(source, /\$\{arch &&\s*tag &&\s*current &&/)
+})
+
 test('popup wraps error messages inside their cards', async () => {
   const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
 
