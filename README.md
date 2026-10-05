@@ -13,6 +13,9 @@ management where Chromium permits it.
 ## Current development status
 
 - The current stable release is Manifest V3 version 4.1.0.
+- Version 4.0.0 is retired: it cannot verify the feed signed with the current
+  `feed-2026-02` key. Update to 4.1.0; unpacked installations must be reloaded
+  from current source.
 - Build data comes from the separate [Chromatic Feed](https://github.com/Bone06/chromatic-feed)
   aggregator, not
   directly from Woolyss or individual build repositories.
