@@ -239,6 +239,13 @@ details[open] > summary::before { transform: translateY(-50%) rotate(90deg); }
 summary { cursor: pointer; }
 
 .setting-warning { @include mix.message(var(--error), 0 0 token.$space-3); }
+.feed-key-notice {
+  @include mix.message(var(--text), token.$space-3 0 0);
+  background: var(--surface-subtle);
+  border-left: 2px solid var(--link);
+  font-size: 0.75rem;
+  padding: token.$space-2 token.$space-3;
+}
 .management-error { @include mix.message(var(--error), token.$space-3 0 0); }
 
 %compact-label {

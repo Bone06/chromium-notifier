@@ -317,6 +317,17 @@ summary {
   white-space: normal;
 }
 
+.feed-key-notice {
+  color: var(--text);
+  margin: 0.75rem 0 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  background: var(--surface-subtle);
+  border-left: 2px solid var(--link);
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
 .management-error {
   color: var(--error);
   margin: 0.75rem 0 0;

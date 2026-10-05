@@ -196,6 +196,7 @@ test('background registers listeners, deduplicates checks and isolates extension
   assert.deepEqual(await manualResponse, { ok: true })
   assert.equal(store.versions.win64[0].version, '150.0.0.1')
   assert.equal(store.buildFeedEtag, '"feed-1"')
+  assert.equal(store.buildFeedKeyId, 'feed-2026-01')
 
   extensions = [{
     id: 'broken',
@@ -204,7 +205,7 @@ test('background registers listeners, deduplicates checks and isolates extension
   }]
   fetchImplementation = async url => String(url).endsWith('.sig')
     ? new Response(JSON.stringify({
-          algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-01',
+          algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-02',
           schemaVersion: 1, signature: 'A'.repeat(86)
         }))
     : new Response(JSON.stringify(createBuildFeed('150.0.0.2')), {
@@ -216,6 +217,7 @@ test('background registers listeners, deduplicates checks and isolates extension
   assert.deepEqual(await isolatedResponse, { ok: true })
   assert.equal(store.versions.win64[0].version, '150.0.0.2')
   assert.equal(store.buildFeedEtag, '"feed-2"')
+  assert.equal(store.buildFeedKeyId, 'feed-2026-02')
   assert.match(store.extensionsGeneralError, /Invalid extension update URL/)
 
   extensions = []
@@ -232,7 +234,29 @@ test('background registers listeners, deduplicates checks and isolates extension
   assert.equal(fetchCalls, fetchesBeforeNotModified + 1)
   assert.equal(conditionalHeader, '"feed-2"')
   assert.equal(store.versions.win64[0].version, '150.0.0.2')
+  assert.equal(store.buildFeedKeyId, 'feed-2026-02')
   assert.equal(store.woolyssError, null)
+
+  delete store.buildFeedKeyId
+  let upgradedConditionalHeader
+  fetchImplementation = async (url, init) => {
+    if (String(url).endsWith('.sig')) {
+      return new Response(JSON.stringify({
+        algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-02',
+        schemaVersion: 1, signature: 'A'.repeat(86)
+      }))
+    }
+    upgradedConditionalHeader = new Headers(init.headers).get('if-none-match')
+    return new Response(JSON.stringify(createBuildFeed('150.0.0.3')), {
+      headers: { etag: '"feed-3"' }
+    })
+  }
+  const upgradedResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await upgradedResponse, { ok: true })
+  assert.equal(upgradedConditionalHeader, null)
+  assert.equal(store.buildFeedKeyId, 'feed-2026-02')
 
   await events.storage.listeners[0]({}, 'local')
   assert.ok(actionCalls.some(([type]) => type === 'text'))

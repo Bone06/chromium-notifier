@@ -86,7 +86,7 @@ test('popup keeps check history visible outside the collapsible details', async 
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(
     source,
-    /<\/details>\s*<div class="chromium-status__history">/
+    /<\/details>[\s\S]*?<div class="chromium-status__history">/
   )
 })
 
@@ -193,6 +193,13 @@ test('popup only warns when the selected build source is stale', async () => {
   assert.match(source, /current\.source\?\.stale/)
   assert.match(source, /The selected build source could not be refreshed/)
   assert.doesNotMatch(source, /buildFeedSources\.some/)
+})
+
+test('popup keeps planned key-rotation notice outside the collapsible status', async () => {
+  const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
+  assert.match(source, /getFeedKeyRotationNotice\(buildFeedKeyId\)/)
+  assert.match(source, /<\/details>\s*\$\{feedKeyRotationNotice && html`/)
+  assert.match(source, /class="feed-key-notice"/)
 })
 
 test('popup keeps Chromium status and manual checks visible without feed data', async () => {

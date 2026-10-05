@@ -28,6 +28,7 @@ const fetchBuildFeedOnce = async config => {
   const headers = {}
   if (
     config.buildFeedEtag &&
+    config.buildFeedKeyId &&
     config.buildFeedGeneratedAt &&
     config.versions &&
     Object.keys(config.versions).length
@@ -55,10 +56,11 @@ const fetchBuildFeedOnce = async config => {
     maxResponseBytes: 4096
   })
   try {
-    await verifySignedBuildFeed(response.text, signatureText)
+    const keyId = await verifySignedBuildFeed(response.text, signatureText)
     return {
       etag: response.etag,
       json: JSON.parse(response.text),
+      keyId,
       notModified: false
     }
   } catch (error) {
@@ -138,6 +140,7 @@ const update = async (...args) => {
         ...getBuildFeedSuccessState(versions, now),
         buildFeedEtag: buildFeedResult.value.etag,
         buildFeedGeneratedAt: generatedAt,
+        buildFeedKeyId: buildFeedResult.value.keyId,
         buildFeedSources: sources
       }
     }

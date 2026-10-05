@@ -20,6 +20,7 @@ import {
   hasExtensionUpdate,
   hasSnapshotRevisionUpdate
 } from './core.js'
+import { getFeedKeyRotationNotice } from './feed-signature.js'
 
 const html = htm.bind(h)
 const CHROMATIC_FEED_PROJECT_URL =
@@ -104,6 +105,7 @@ const changeTheme = e =>
  */
 
 const ChromiumInfo = ({
+  buildFeedKeyId,
   checking,
   chromiumOpenRequest,
   current = {},
@@ -128,6 +130,7 @@ const ChromiumInfo = ({
     currentVersion,
     current.version
   )
+  const feedKeyRotationNotice = getFeedKeyRotationNotice(buildFeedKeyId)
   const checkForUpdates = event => {
     event.preventDefault()
     event.stopPropagation()
@@ -244,6 +247,9 @@ const ChromiumInfo = ({
       `}
     </div>
   </details>
+  ${feedKeyRotationNotice && html`
+    <p class="feed-key-notice">${feedKeyRotationNotice}</p>
+  `}
   <div class="chromium-status__history">
       <small>
         ${lastAttemptAt
@@ -835,6 +841,7 @@ class App extends Component {
     {
       arch,
       badgeColors,
+      buildFeedKeyId,
       checking,
       chromiumOpenRequest,
       currentVersion,
@@ -872,6 +879,7 @@ class App extends Component {
 
       <${Section}>
         <${ChromiumInfo}
+          buildFeedKeyId="${buildFeedKeyId}"
           checking="${checking}"
           chromiumOpenRequest="${chromiumOpenRequest}"
           current="${current}"

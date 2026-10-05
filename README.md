@@ -16,6 +16,13 @@ management where Chromium permits it.
 - Version 4.0.0 is retired: it cannot verify the feed signed with the current
   `feed-2026-02` key. Update to 4.1.0; unpacked installations must be reloaded
   from current source.
+- Planned feed-signing key rotation is based on a 12-month maximum active
+  signing lifetime, not each extension release. A new client must be available
+  for a 30-day migration before the signer changes; acceptance of the outgoing
+  key ends at that cutover. Version 4.1.0 predates client-side expiry,
+  so this limit requires a future extension release. A compromised key instead
+  requires immediate replacement and an emergency extension release, without
+  a grace period.
 - Build data comes from the separate [Chromatic Feed](https://github.com/Bone06/chromatic-feed)
   aggregator, not
   directly from Woolyss or individual build repositories.

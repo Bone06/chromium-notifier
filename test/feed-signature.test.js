@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { webcrypto } from 'node:crypto'
 import test from 'node:test'
 import {
+  getFeedKeyRotationNotice,
   TRUSTED_FEED_KEYS,
   verifySignedBuildFeed
 } from '../js/feed-signature.js'
@@ -38,11 +39,30 @@ test('verifySignedBuildFeed accepts exact bytes and rejects tampering', async ()
   })
   assert.equal(await verifySignedBuildFeed(
     feedText, document, { 'test-key': publicJwk }
-  ), true)
+  ), 'test-key')
   await assert.rejects(
     verifySignedBuildFeed(`${feedText} `, document, { 'test-key': publicJwk }),
     /verification failed/
   )
+})
+
+test('rotation notice is limited to a verified outgoing key and scheduled cutover', () => {
+  const rotation = {
+    outgoingKeyId: 'old-key',
+    incomingKeyId: 'new-key',
+    cutoverAt: '2027-10-01T00:00:00Z'
+  }
+  assert.match(
+    getFeedKeyRotationNotice('old-key', rotation),
+    /2027-10-01 \(UTC\)/
+  )
+  assert.equal(getFeedKeyRotationNotice('new-key', rotation), null)
+  assert.equal(getFeedKeyRotationNotice(null, rotation), null)
+  assert.equal(getFeedKeyRotationNotice('old-key'), null)
+  assert.equal(getFeedKeyRotationNotice('old-key', {
+    ...rotation,
+    cutoverAt: 'invalid'
+  }), null)
 })
 
 test('verifySignedBuildFeed rejects unknown keys and malformed metadata', async () => {

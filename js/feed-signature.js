@@ -1,5 +1,24 @@
 export const FEED_SIGNATURE_ALGORITHM = 'ECDSA-P256-SHA256'
 
+// Configure only when a planned rotation and its UTC cutover are scheduled.
+export const PLANNED_FEED_KEY_ROTATION = null
+
+export const getFeedKeyRotationNotice = (
+  verifiedKeyId,
+  rotation = PLANNED_FEED_KEY_ROTATION
+) => {
+  if (
+    !rotation ||
+    verifiedKeyId !== rotation.outgoingKeyId ||
+    !rotation.incomingKeyId ||
+    !Number.isFinite(Date.parse(rotation.cutoverAt))
+  ) return null
+
+  return `This feed was signed with a key being retired. Acceptance ends: ${
+    new Date(rotation.cutoverAt).toISOString().slice(0, 10)
+  } (UTC). Keep this extension up to date.`
+}
+
 export const TRUSTED_FEED_KEYS = Object.freeze({
   'feed-2026-01': Object.freeze({
     crv: 'P-256',
@@ -53,5 +72,5 @@ export const verifySignedBuildFeed = async (
     new TextEncoder().encode(feedText)
   )
   if (!valid) throw new Error('Feed signature verification failed')
-  return true
+  return document.keyId
 }
