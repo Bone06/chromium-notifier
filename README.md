@@ -13,9 +13,9 @@ management where Chromium permits it.
 ## Current development status
 
 - The current stable release is Manifest V3 version 4.1.0.
-- Version 4.0.0 is retired: it cannot verify the feed signed with the current
-  `feed-2026-02` key. Update to 4.1.0; unpacked installations must be reloaded
-  from current source.
+- Version 4.0.0 is retired: it cannot verify the currently signed production
+  feed. Update to 4.1.0; unpacked installations must be reloaded from current
+  source.
 - Planned feed-signing key rotation is based on a 12-month maximum active
   signing lifetime, not each extension release. A new client must be available
   for a 30-day migration before the signer changes; acceptance of the outgoing
@@ -87,6 +87,12 @@ npm run package
 
 Runtime JavaScript and third-party UI libraries are bundled locally. npm
 dependencies are development tools and are not loaded by the extension.
+
+The embedded feed public keys and production URL belong to this project's
+deployment. To run an independent fork, generate your own feed-signing key
+pair, point `BUILD_FEED_URL` in `js/background.js` to your feed, and replace
+`TRUSTED_FEED_KEYS` in `js/feed-signature.js` with your public key. The private
+feed key is not included in the clone and must never be committed or published.
 
 Popup styles are authored in `styles.scss`, with shared theme tokens and mixins
 under `scss/`. Run `npm run build:css` after an SCSS change and commit the
