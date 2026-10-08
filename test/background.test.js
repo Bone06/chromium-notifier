@@ -64,6 +64,7 @@ test('background registers listeners, deduplicates checks and isolates extension
     storage: createEvent()
   }
   const actionCalls = []
+  const loggedErrors = []
   const storageWrites = []
   let extensions = []
   let fetchCalls = 0
@@ -101,7 +102,7 @@ test('background registers listeners, deduplicates checks and isolates extension
     }
   })
   console.debug = () => {}
-  console.error = () => {}
+  console.error = (...args) => loggedErrors.push(args)
   globalThis.fetch = (...args) => {
     fetchCalls += 1
     return fetchImplementation(...args)
@@ -261,4 +262,51 @@ test('background registers listeners, deduplicates checks and isolates extension
   await events.storage.listeners[0]({}, 'local')
   assert.ok(actionCalls.some(([type]) => type === 'text'))
   assert.ok(storageWrites.length >= 2)
+
+  const errorsBeforeWorkerStop = loggedErrors.length
+  globalThis.chrome.action.setBadgeText = async () => { throw new Error('No SW') }
+  await events.storage.listeners[0]({}, 'local')
+  assert.equal(loggedErrors.length, errorsBeforeWorkerStop)
+
+  globalThis.chrome.action.setBadgeText = async () => {
+    throw new Error('Badge API failed')
+  }
+  await events.storage.listeners[0]({}, 'local')
+  assert.match(loggedErrors.at(-1)[0], /Badge update failed/)
+  assert.match(loggedErrors.at(-1)[1].message, /Badge API failed/)
+})
+
+test('background handles a stopped worker during alarm setup without hiding other errors', async t => {
+  const originalChrome = globalThis.chrome
+  const originalError = console.error
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  t.after(() => {
+    console.error = originalError
+    if (originalChrome === undefined) delete globalThis.chrome
+    else globalThis.chrome = originalChrome
+  })
+
+  for (const [message, expectedErrors] of [
+    ['No SW', 0],
+    ['Alarm API failed', 1]
+  ]) {
+    globalThis.chrome = {
+      alarms: {
+        get: async () => { throw new Error(message) },
+        onAlarm: createEvent()
+      },
+      runtime: {
+        onInstalled: createEvent(),
+        onMessage: createEvent(),
+        onStartup: createEvent()
+      },
+      storage: { onChanged: createEvent() }
+    }
+    await import(`../js/background.js?alarm-error=${encodeURIComponent(message)}`)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(errors.length, expectedErrors)
+  }
+  assert.match(errors[0][0], /Alarm setup failed/)
+  assert.match(errors[0][1].message, /Alarm API failed/)
 })

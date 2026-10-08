@@ -24,6 +24,16 @@ const BUILD_FEED_URL =
 const BUILD_FEED_SIGNATURE_URL = `${BUILD_FEED_URL}.sig`
 let currentUpdate
 
+const reportBackgroundError = (task, error) => {
+  // Chromium may reject an in-flight extension API call after this worker stops.
+  if (error?.message !== 'No SW') {
+    console.error(`${task} failed`, error)
+  }
+}
+
+const runBackgroundTask = (task, promise) =>
+  promise.catch(error => reportBackgroundError(task, error))
+
 const fetchBuildFeedOnce = async config => {
   const headers = {}
   if (
@@ -180,11 +190,11 @@ const ensureAlarm = async () => {
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   console.debug('Extension installed', reason)
-  ensureAlarm()
-  main(reason)
+  runBackgroundTask('Alarm setup', ensureAlarm())
+  runBackgroundTask('Update check', main(reason))
 })
 
-chrome.storage.onChanged.addListener(async () => {
+const updateBadge = async () => {
   const {
     arch,
     badgeColors,
@@ -235,14 +245,20 @@ chrome.storage.onChanged.addListener(async () => {
     console.error(woolyssError)
   }
 
-  chrome.action.setBadgeBackgroundColor({ color: badge.color })
-  chrome.action.setBadgeText({ text: badge.text })
-  chrome.action.setTitle({ title: badge.title })
-})
+  await Promise.all([
+    chrome.action.setBadgeBackgroundColor({ color: badge.color }),
+    chrome.action.setBadgeText({ text: badge.text }),
+    chrome.action.setTitle({ title: badge.title })
+  ])
+}
+
+chrome.storage.onChanged.addListener(() =>
+  runBackgroundTask('Badge update', updateBadge())
+)
 
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === ALARM_NAME) {
-    main(alarm.name)
+    runBackgroundTask('Scheduled update check', main(alarm.name))
   }
 })
 
@@ -260,6 +276,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true
 })
 
-chrome.runtime.onStartup.addListener(main)
+chrome.runtime.onStartup.addListener(() =>
+  runBackgroundTask('Startup update check', main('startup'))
+)
 
-ensureAlarm()
+runBackgroundTask('Alarm setup', ensureAlarm())
