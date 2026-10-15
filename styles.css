@@ -24,6 +24,7 @@
   --strong-text: #202124;
   --text: #5f6368;
   color-scheme: light;
+  scrollbar-gutter: stable;
 }
 
 :root[data-theme=dark] {

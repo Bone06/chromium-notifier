@@ -5,7 +5,10 @@
 *::before,
 *::after { box-sizing: border-box; }
 
-:root { @include mix.theme(light); }
+:root {
+  @include mix.theme(light);
+  scrollbar-gutter: stable;
+}
 :root[data-theme="dark"] { @include mix.theme(dark); }
 
 @media (prefers-color-scheme: dark) {

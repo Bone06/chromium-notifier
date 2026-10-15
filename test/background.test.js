@@ -191,13 +191,13 @@ test('background registers listeners, deduplicates checks and isolates extension
     'https://bone06.ddns.net/chromium/versions.json.sig'
   )
   pendingFetches[1].resolve(new Response(JSON.stringify({
-    algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-01',
+    algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-02',
     schemaVersion: 1, signature: 'A'.repeat(86)
   })))
   assert.deepEqual(await manualResponse, { ok: true })
   assert.equal(store.versions.win64[0].version, '150.0.0.1')
   assert.equal(store.buildFeedEtag, '"feed-1"')
-  assert.equal(store.buildFeedKeyId, 'feed-2026-01')
+  assert.equal(store.buildFeedKeyId, 'feed-2026-02')
 
   extensions = [{
     id: 'broken',

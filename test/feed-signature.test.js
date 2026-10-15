@@ -7,9 +7,8 @@ import {
   verifySignedBuildFeed
 } from '../js/feed-signature.js'
 
-test('release trusts the current and next feed signing keys', () => {
+test('next release trusts only the active feed signing key', () => {
   assert.deepEqual(Object.keys(TRUSTED_FEED_KEYS), [
-    'feed-2026-01',
     'feed-2026-02'
   ])
   for (const key of Object.values(TRUSTED_FEED_KEYS)) {
@@ -72,4 +71,12 @@ test('verifySignedBuildFeed rejects unknown keys and malformed metadata', async 
   })
   await assert.rejects(verifySignedBuildFeed('{}', document), /Untrusted/)
   await assert.rejects(verifySignedBuildFeed('{}', '{}'), /Invalid/)
+  const retiredDocument = JSON.stringify({
+    algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-01', schemaVersion: 1,
+    signature: 'A'.repeat(86)
+  })
+  await assert.rejects(
+    verifySignedBuildFeed('{}', retiredDocument),
+    /Untrusted feed signing key: feed-2026-01/
+  )
 })
