@@ -113,18 +113,14 @@ both its asset filename and display label set exactly to
 `chromium-notifier.crx`; the stable update URL and existing installations rely
 on that version-independent name.
 
-## Historical upstream notice
+## Origin and attribution
 
-The following notice and legacy notes are retained from the original project
-for attribution and historical context. The maintained fork has since completed
-the Manifest V3 and build-source migration described above.
+This maintained project is based on [Christian Mund's original Chromium Update
+Notifications](https://github.com/kkkrist/chromium-notifier). The original
+author and license information remain in `manifest.json` and `COPYING.txt`;
+bundled libraries are credited in `THIRD_PARTY_NOTICES.txt`.
 
-This project is going to be archived in March 2023. It's been a fun one and I'm happy to have given something back to the Chromium community. The project has been on cruise-control for quite some time anyway, mostly because I've stopped using it myself. To keep it working beyond the coming months it's going to need some updates which I simply lack the time (and motivation to make time) for. Parts of the functionality need to be re-written to work in a service worker context for manifest v3. The [privacy proxy](https://github.com/kkkrist/chromium-extension-service) needs updating to adapt to backend changes. On top of that, it's running at its capacity limits since months and I don't feel like paying for higher service tiers (it runs on Vercel/MongoDB Atlas). It doesn't help that some forks of the extension have their users hammer on the error logger either.
-
-There's going to be one last update in the form of v2.0.0. It will have the option to use the privacy proxy removed, which I'm going to shut down (also includes the error logger). Apart from that, the functionality will be identical to the latest v1 (v1.8.9). So if you want to track updates for your installed extensions (which is optional), you're going to have to let it communicate with origin servers directly (i.e. Google, with all privacy implications).
-
-v2.0.0 (or v1.8.9 with the privacy proxy disabled) should keep working for as long as the Woolyss API and the Chrome Web Store API do not introduce breaking changes and your preferred Chromium build supports installing manifest v2 extensions (in some way).
-
-~~I plan to list this extension in the Chrome Web Store soon to get around this issue~~ (see [#14](https://github.com/kkkrist/chromium-notifier/issues/14)).
-
-~~You can also enable [error tracking](https://github.com/kkkrist/chromium-extension-service#error-tracking) to help improving this extension and increase your privacy by using a proxy to fetch extension updates. The latter will [strip all personal and adtech-related data](https://github.com/kkkrist/chromium-extension-service#version-info-for-installed-extensions) your browser might send if it requests the data directly (this was always enabled in versions prior to 1.7.0, now it's optional). I use a [public Vercel deployment](https://chrome-extension-service-kkkrist.vercel.app/_src) to host the proxy, so you can review all of the actual source code used to run it.~~ (Removed in v2.0.0, see comment on top!)
+The original project's [2023 retirement notice and legacy
+instructions](https://github.com/kkkrist/chromium-notifier/blob/v2.0.0/README.md)
+describe the historical upstream, not this maintained Manifest V3 release.
+Its version 1.x and 2.0.0 tags remain available here as historical references.
