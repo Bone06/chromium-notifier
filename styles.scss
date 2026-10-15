@@ -21,6 +21,8 @@ select,
 img,
 .install-type { user-select: none; }
 
+input[type="checkbox"] { accent-color: var(--link); }
+
 a {
   color: var(--link);
   text-decoration: none;

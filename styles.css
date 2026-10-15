@@ -10,16 +10,16 @@
   --surface-subtle: #f8f9fa;
   --border: #dadce0;
   --control-background: #ffffff;
-  --accent-soft: #e8f0fe;
-  --action-background: #d2e3fc;
-  --action-hover: #c6dafc;
-  --action-text: #174ea6;
+  --accent-soft: #e3f2ed;
+  --action-background: #d6ebe5;
+  --action-hover: #c0e1d7;
+  --action-text: #0b6e69;
   --success: #1e8e3e;
   --error: #b00020;
   --icon-filter: none;
   --install-type-background: #e8eaed;
   --install-type-text: #3c4043;
-  --link: #3367d6;
+  --link: #0b6e69;
   --muted-text: #80868b;
   --strong-text: #202124;
   --text: #5f6368;
@@ -32,16 +32,16 @@
   --surface-subtle: #242528;
   --border: #3c4043;
   --control-background: #292a2d;
-  --accent-soft: #30445f;
-  --action-background: #3c4043;
-  --action-hover: #4a4d51;
-  --action-text: #8ab4f8;
+  --accent-soft: #304b48;
+  --action-background: #354b47;
+  --action-hover: #405e58;
+  --action-text: #80cbc4;
   --success: #81c995;
   --error: #f28b82;
   --icon-filter: invert(1);
   --install-type-background: #3c4043;
   --install-type-text: #e8eaed;
-  --link: #8ab4f8;
+  --link: #80cbc4;
   --muted-text: #9aa0a6;
   --strong-text: #f1f3f4;
   --text: #bdc1c6;
@@ -55,16 +55,16 @@
     --surface-subtle: #242528;
     --border: #3c4043;
     --control-background: #292a2d;
-    --accent-soft: #30445f;
-    --action-background: #3c4043;
-    --action-hover: #4a4d51;
-    --action-text: #8ab4f8;
+    --accent-soft: #304b48;
+    --action-background: #354b47;
+    --action-hover: #405e58;
+    --action-text: #80cbc4;
     --success: #81c995;
     --error: #f28b82;
     --icon-filter: invert(1);
     --install-type-background: #3c4043;
     --install-type-text: #e8eaed;
-    --link: #8ab4f8;
+    --link: #80cbc4;
     --muted-text: #9aa0a6;
     --strong-text: #f1f3f4;
     --text: #bdc1c6;
@@ -82,6 +82,10 @@ select,
 img,
 .install-type {
   user-select: none;
+}
+
+input[type=checkbox] {
+  accent-color: var(--link);
 }
 
 a {
