@@ -15,6 +15,19 @@
   :root[data-theme="browser"] { @include mix.theme(dark); }
 }
 
+// Keep the draggable area wider than the visible thumb, without native arrows.
+:root::-webkit-scrollbar { width: 10px; }
+:root::-webkit-scrollbar-track { background: var(--background); }
+:root::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--background);
+  border-radius: 999px;
+}
+:root::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+:root::-webkit-scrollbar-button { display: none; }
+
 *:disabled,
 .disabled { opacity: token.$disabled-opacity; }
 

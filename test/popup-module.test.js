@@ -161,6 +161,15 @@ test('popup dropdowns use the shared UI typography and surfaces', async () => {
   assert.match(styles, /label > select\s*\{[\s\S]*?font-size: 13px;/)
 })
 
+test('popup uses a compact themed scrollbar without native arrow buttons', async () => {
+  const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(styles, /:root\s*\{[\s\S]*?scrollbar-gutter: stable;/)
+  assert.match(styles, /:root::-webkit-scrollbar\s*\{\s*width: 10px;/)
+  assert.match(styles, /:root::-webkit-scrollbar-thumb\s*\{[\s\S]*?background: var\(--scrollbar-thumb\);/)
+  assert.match(styles, /:root::-webkit-scrollbar-button\s*\{\s*display: none;/)
+  assert.doesNotMatch(styles, /scrollbar-width: thin;/)
+})
+
 test('popup truncates long extension names without overflowing their row', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8')
