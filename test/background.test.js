@@ -50,6 +50,7 @@ const createBuildFeed = version => ({
 test('background registers listeners, deduplicates checks and isolates extension failures', async t => {
   const originalDebug = console.debug
   const originalError = console.error
+  const originalWarn = console.warn
   const originalFetch = globalThis.fetch
   const navigatorDescriptor = Object.getOwnPropertyDescriptor(
     globalThis,
@@ -64,6 +65,8 @@ test('background registers listeners, deduplicates checks and isolates extension
     storage: createEvent()
   }
   const actionCalls = []
+  const alarmCreations = []
+  const clearedAlarms = []
   const loggedErrors = []
   const storageWrites = []
   let extensions = []
@@ -103,6 +106,7 @@ test('background registers listeners, deduplicates checks and isolates extension
   })
   console.debug = () => {}
   console.error = (...args) => loggedErrors.push(args)
+  console.warn = () => {}
   globalThis.fetch = (...args) => {
     fetchCalls += 1
     return fetchImplementation(...args)
@@ -114,7 +118,8 @@ test('background registers listeners, deduplicates checks and isolates extension
       setTitle: value => actionCalls.push(['title', value])
     },
     alarms: {
-      create: async () => {},
+      clear: async name => { clearedAlarms.push(name) },
+      create: async (name, info) => { alarmCreations.push({ name, info }) },
       get: async () => null,
       onAlarm: events.alarm
     },
@@ -144,6 +149,7 @@ test('background registers listeners, deduplicates checks and isolates extension
     delete globalThis.chrome
     console.debug = originalDebug
     console.error = originalError
+    console.warn = originalWarn
     globalThis.fetch = originalFetch
     if (cryptoDescriptor) {
       Object.defineProperty(globalThis, 'crypto', cryptoDescriptor)
@@ -258,6 +264,74 @@ test('background registers listeners, deduplicates checks and isolates extension
   assert.deepEqual(await upgradedResponse, { ok: true })
   assert.equal(upgradedConditionalHeader, null)
   assert.equal(store.buildFeedKeyId, 'feed-2026-02')
+
+  const cachedVersion = store.versions.win64[0].version
+  fetchImplementation = async () => { throw new TypeError('Failed to fetch') }
+  const failedResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await failedResponse, { ok: true })
+  assert.equal(store.woolyssError, 'Failed to fetch')
+  assert.equal(store.versions.win64[0].version, cachedVersion)
+  assert.deepEqual(
+    alarmCreations.filter(({ name }) => name === 'feed-recovery'),
+    [{ name: 'feed-recovery', info: { delayInMinutes: 1 } }]
+  )
+
+  const errorsAfterFetchFailure = loggedErrors.length
+  await events.storage.listeners[0]({}, 'local')
+  assert.equal(loggedErrors.length, errorsAfterFetchFailure)
+
+  const recoveriesBeforeFailedRecovery = alarmCreations.length
+  events.alarm.listeners[0]({ name: 'feed-recovery' })
+  const failedRecoveryResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await failedRecoveryResponse, { ok: true })
+  assert.equal(alarmCreations.length, recoveriesBeforeFailedRecovery)
+
+  fetchImplementation = async () => new Response(null, { status: 304 })
+  const recoveredResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await recoveredResponse, { ok: true })
+  assert.equal(store.woolyssError, null)
+  assert.ok(clearedAlarms.includes('feed-recovery'))
+
+  const recoveryCount = alarmCreations.filter(
+    ({ name }) => name === 'feed-recovery'
+  ).length
+  fetchImplementation = async () => new Response('', { status: 503 })
+  const serverErrorResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await serverErrorResponse, { ok: true })
+  assert.match(store.woolyssError, /Chromatic Feed failed \(503\)/)
+  assert.equal(
+    alarmCreations.filter(({ name }) => name === 'feed-recovery').length,
+    recoveryCount
+  )
+
+  globalThis.navigator.onLine = false
+  const offlineResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await offlineResponse, { ok: true })
+  assert.equal(store.woolyssError, 'Browser is offline')
+  const recoveriesBeforeOfflineRecovery = alarmCreations.length
+  events.alarm.listeners[0]({ name: 'feed-recovery' })
+  const offlineRecoveryResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await offlineRecoveryResponse, { ok: true })
+  assert.equal(alarmCreations.length, recoveriesBeforeOfflineRecovery)
+  globalThis.navigator.onLine = true
+  fetchImplementation = async () => new Response(null, { status: 304 })
+  const backOnlineResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  assert.deepEqual(await backOnlineResponse, { ok: true })
+  assert.equal(store.woolyssError, null)
 
   await events.storage.listeners[0]({}, 'local')
   assert.ok(actionCalls.some(([type]) => type === 'text'))

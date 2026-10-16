@@ -19,6 +19,8 @@ import {
 import { verifySignedBuildFeed } from './feed-signature.js'
 
 const ALARM_NAME = 'main'
+const RECOVERY_ALARM_NAME = 'feed-recovery'
+const RECOVERY_DELAY_MINUTES = 1
 const BUILD_FEED_URL =
   'https://bone06.ddns.net/chromium/versions.json'
 const BUILD_FEED_SIGNATURE_URL = `${BUILD_FEED_URL}.sig`
@@ -33,6 +35,20 @@ const reportBackgroundError = (task, error) => {
 
 const runBackgroundTask = (task, promise) =>
   promise.catch(error => reportBackgroundError(task, error))
+
+const setRecoveryAlarm = async scheduled => {
+  try {
+    if (scheduled) {
+      await chrome.alarms.create(RECOVERY_ALARM_NAME, {
+        delayInMinutes: RECOVERY_DELAY_MINUTES
+      })
+    } else {
+      await chrome.alarms.clear(RECOVERY_ALARM_NAME)
+    }
+  } catch (error) {
+    reportBackgroundError('Feed recovery alarm', error)
+  }
+}
 
 const fetchBuildFeedOnce = async config => {
   const headers = {}
@@ -105,6 +121,7 @@ const fetchBuildFeed = config => retryTransientRequest(
 const update = async (...args) => {
   const config = await getConfig()
   const now = Date.now()
+  const isRecoveryCheck = args[0] === RECOVERY_ALARM_NAME
 
   console.debug(new Date(now).toISOString(), args)
 
@@ -112,6 +129,7 @@ const update = async (...args) => {
     const error = new Error('Browser is offline')
     console.debug(`We're not online, aborting.`, config)
     await chrome.storage.local.set(getBuildFeedErrorState(config, error, now))
+    if (!isRecoveryCheck) await setRecoveryAlarm(true)
     return
   } else {
     console.debug('updating', config)
@@ -132,6 +150,8 @@ const update = async (...args) => {
     extensionJob
   ])
   let newState
+  let feedSucceeded = false
+  let transientFeedFailure = false
 
   try {
     if (buildFeedResult.status === 'rejected') {
@@ -154,9 +174,12 @@ const update = async (...args) => {
         buildFeedSources: sources
       }
     }
+    feedSucceeded = true
   } catch (error) {
     console.error(error)
     newState = getBuildFeedErrorState(config, error, now)
+    transientFeedFailure = buildFeedResult.status === 'rejected' &&
+      isTransientNetworkError(buildFeedResult.reason)
   }
 
   if (extensionResult.status === 'fulfilled' && extensionResult.value) {
@@ -170,6 +193,10 @@ const update = async (...args) => {
   }
 
   await chrome.storage.local.set(newState)
+  if (feedSucceeded) await setRecoveryAlarm(false)
+  else if (transientFeedFailure && !isRecoveryCheck) {
+    await setRecoveryAlarm(true)
+  }
 }
 
 const main = (...args) => {
@@ -241,10 +268,6 @@ const updateBadge = async () => {
     }
   )
 
-  if (woolyssError) {
-    console.error(woolyssError)
-  }
-
   await Promise.all([
     chrome.action.setBadgeBackgroundColor({ color: badge.color }),
     chrome.action.setBadgeText({ text: badge.text }),
@@ -257,7 +280,7 @@ chrome.storage.onChanged.addListener(() =>
 )
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === ALARM_NAME) {
+  if (alarm.name === ALARM_NAME || alarm.name === RECOVERY_ALARM_NAME) {
     runBackgroundTask('Scheduled update check', main(alarm.name))
   }
 })
