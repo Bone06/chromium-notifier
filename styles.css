@@ -409,6 +409,10 @@ details[open] > summary::before {
   font-size: smaller;
   margin: 1em 0 0;
 }
+.chromium-status .details-content a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .chromium-status > details[open] > summary {
   margin-bottom: 0.5rem;
 }

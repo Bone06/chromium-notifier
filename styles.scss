@@ -309,6 +309,11 @@ details[open] > summary::before { transform: translateY(-50%) rotate(90deg); }
     margin: 1em 0 0;
   }
 
+  .details-content a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   > details[open] > summary { margin-bottom: token.$space-2; }
 }
 
