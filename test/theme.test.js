@@ -62,7 +62,7 @@ test('theme bootstrap restores a stored accent palette', async t => {
 
 test('popup exposes all theme modes and browser-default CSS', async () => {
   const [popup, styles] = await Promise.all([
-    readFile(new URL('../js/popup.js', import.meta.url), 'utf8'),
+    readFile(new URL('../js/popup/settings-card.js', import.meta.url), 'utf8'),
     readFile(new URL('../styles.css', import.meta.url), 'utf8')
   ])
 

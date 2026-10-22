@@ -79,8 +79,8 @@ for install** for one-click external extension installation.
 ## Configuration
 
 Open the popup and select a platform and build. Settings also include extension
-update tracking, snapshot revision notifications, theme mode and custom badge
-colors. `Check now` performs an immediate refresh.
+update tracking, snapshot revision notifications, theme mode, interface color
+(Chromium blue or Teal) and custom badge colors. `Check now` performs an immediate refresh.
 
 ## Development
 
@@ -92,6 +92,36 @@ npm run package
 
 Runtime JavaScript and third-party UI libraries are bundled locally. npm
 dependencies are development tools and are not loaded by the extension.
+
+### Browser regression tests
+
+```text
+npm run test:browser:install
+npm run test:browser
+```
+
+Playwright uses disposable, isolated Chromium contexts and a loopback-only HTTP
+fixture with simulated extension APIs. No normal browser profile, real extension
+storage or production feed is touched. An existing Playwright browser cache can
+be selected with `PLAYWRIGHT_BROWSERS_PATH`; no reinstall is needed in that case.
+The CI browser job installs Chromium and its Linux system dependencies separately.
+
+The suite checks both interface palettes in light/dark mode with axe, distinct
+picker highlights, long names/errors, theme persistence and browser-theme changes,
+snapshot acknowledgment, missing selection and UI recovery after a simulated
+failed check. Failures retain a trace and screenshot in `test-results/`.
+These are rendering tests, not an installed-extension/service-worker end-to-end
+test; request, signature and worker behavior are covered separately by `npm run check`.
+
+### Runtime organization
+
+`js/core.js` preserves the existing public exports while feed validation,
+extension updates, version handling, URLs and badge formatting live in focused
+modules. `js/presentation.js` derives the shared popup/badge state without writing
+to storage. The open popup's snapshot notice is intentionally retained locally
+until the popup closes, even after its storage acknowledgment clears the badge.
+Popup cards and setting events live under `js/popup/`; `js/popup.js` owns lifecycle,
+extension actions and state synchronization. Existing storage names remain compatible.
 
 The embedded feed public keys and production URL belong to this project's
 deployment. To run an independent fork, generate your own feed-signing key

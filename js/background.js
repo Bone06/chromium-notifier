@@ -8,15 +8,13 @@ import {
   retryTransientRequest,
 } from './utils.js'
 import {
-  getBadgePresentation,
-  getBadgeStatus,
-  hasSnapshotRevisionUpdate,
   getBuildFeedErrorState,
   getBuildFeedSuccessState,
   assertBuildFeedFreshness,
   isBuildFeedRollback,
   validateBuildSourcesFeed
 } from './core.js'
+import { getUpdatePresentation } from './presentation.js'
 import { isTrustedFeedKey, verifySignedBuildFeed } from './feed-signature.js'
 
 const ALARM_NAME = 'main'
@@ -233,51 +231,9 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 })
 
 const updateBadge = async () => {
-  const {
-    arch,
-    badgeColors,
-    extensions,
-    extensionsInfo = [],
-    extensionsTrack,
-    notifySnapshotRevisions,
-    snapshotRevisionsSeen,
-    tag,
-    useCustomColors,
-    versions,
-    woolyssDataStale,
-    woolyssError
-  } = await getConfig()
-
-  const current =
-    versions &&
-    arch &&
-    versions[arch] &&
-    versions[arch].find(v => v.tag === tag)
-  const snapshotRevisionUpdate = hasSnapshotRevisionUpdate({
-    current,
-    notifySnapshotRevisions,
-    snapshotRevisionsSeen
-  })
-
+  const config = await getConfig()
   const { uaFullVersion } = await getUserAgentData()
-  const badge = getBadgePresentation(
-    getBadgeStatus({
-      availableVersion: current?.version,
-      currentVersion: uaFullVersion,
-      extensions,
-      extensionsInfo,
-      extensionsTrack,
-      snapshotRevisionUpdate,
-      woolyssError
-    }),
-    {
-      badgeColors,
-      hasStaleBuildSource: current?.source?.stale === true,
-      snapshotRevisionUpdate,
-      useCustomColors,
-      woolyssDataStale
-    }
-  )
+  const { badge } = getUpdatePresentation({ ...config, currentVersion: uaFullVersion })
 
   await Promise.all([
     chrome.action.setBadgeBackgroundColor({ color: badge.color }),

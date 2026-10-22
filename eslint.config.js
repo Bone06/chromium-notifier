@@ -22,6 +22,13 @@ export default [
     }
   },
   {
+    files: ['browser-tests/**/*.js', 'playwright.config.js'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser, popupFixture: 'readonly' }
+    },
+    rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_' }] }
+  },
+  {
     files: ['scripts/**/*.js', 'test/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',

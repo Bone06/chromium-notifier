@@ -8,10 +8,12 @@
     "build:css": "node scripts/styles.js",
     "check": "npm run lint && npm run check:css && npm test",
     "check:css": "node scripts/styles.js --check",
-    "lint": "eslint eslint.config.js js scripts test",
+    "lint": "eslint eslint.config.js playwright.config.js js scripts test browser-tests",
     "package": "node scripts/stage-extension.js",
     "prepackage": "npm run check:css",
-    "test": "node --test"
+    "test": "node --test",
+    "test:browser": "playwright test",
+    "test:browser:install": "playwright install chromium"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

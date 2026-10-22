@@ -41,3 +41,23 @@ jobs:
             echo 'Tracked private key material or a .secrets path was found.' >&2
             exit 1
           fi
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.20.0
+          cache: npm
+      - name: Install development dependencies
+        run: npm ci
+      - name: Install isolated test browser and system dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Check generated styles
+        run: npm run check:css
+      - name: Run isolated popup rendering and accessibility tests
+        run: npm run test:browser
