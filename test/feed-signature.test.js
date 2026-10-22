@@ -3,9 +3,20 @@ import { webcrypto } from 'node:crypto'
 import test from 'node:test'
 import {
   getFeedKeyRotationNotice,
+  isTrustedFeedKey,
   TRUSTED_FEED_KEYS,
   verifySignedBuildFeed
 } from '../js/feed-signature.js'
+
+test('key trust ends at the cutover and never inherits prototype properties', () => {
+  const trustedKeys = { outgoing: {}, incoming: {} }
+  const rotation = { outgoingKeyId: 'outgoing', incomingKeyId: 'incoming', cutoverAt: '2027-10-01T00:00:00Z' }
+  const now = Date.parse(rotation.cutoverAt)
+  assert.equal(isTrustedFeedKey('outgoing', { trustedKeys, rotation, now: now - 1 }), true)
+  assert.equal(isTrustedFeedKey('outgoing', { trustedKeys, rotation, now }), false)
+  assert.equal(isTrustedFeedKey('incoming', { trustedKeys, rotation, now }), true)
+  assert.equal(isTrustedFeedKey('constructor', { trustedKeys }), false)
+})
 
 test('next release trusts only the active feed signing key', () => {
   assert.deepEqual(Object.keys(TRUSTED_FEED_KEYS), [

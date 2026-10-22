@@ -202,19 +202,21 @@ export const fetchExtensionsInfo = async (
       acc[updateUrl] = addIfNew(acc[updateUrl], id)
     }
     return acc
-  }, {})
+  }, Object.create(null))
 
   const updateUrls = Object.keys(jobs)
-  const serverJobs = updateUrls.map(updateUrl => ({
-    batches: createExtensionUpdateBatches(
-      updateUrl,
-      jobs[updateUrl],
-      prodversion,
-      maxUrlLength,
-      { allowPrivateNetwork }
-    ),
-    updateUrl
-  }))
+  const preparationErrors = []
+  const serverJobs = updateUrls.map(updateUrl => {
+    try {
+      return {
+        batches: createExtensionUpdateBatches(updateUrl, jobs[updateUrl], prodversion, maxUrlLength, { allowPrivateNetwork }),
+        updateUrl
+      }
+    } catch (error) {
+      preparationErrors.push({ batch: 0, totalBatches: 0, updateUrl, message: error.message })
+      return { batches: [], updateUrl }
+    }
+  })
   const batchJobs = serverJobs.flatMap(({ batches, updateUrl }) =>
     batches.map((ids, batchIndex) => ({
       batchIndex,
@@ -238,7 +240,7 @@ export const fetchExtensionsInfo = async (
     .map(({ value }) => value)
     .flat()
 
-  const extensionsErrors = results.flatMap((result, index) =>
+  const extensionsErrors = [...preparationErrors, ...results.flatMap((result, index) =>
     result.status === 'rejected'
       ? [{
           batch: batchJobs[index].batchIndex + 1,
@@ -247,7 +249,7 @@ export const fetchExtensionsInfo = async (
           message: result.reason?.message || String(result.reason)
         }]
       : []
-  )
+  )]
   const failedServers = new Set(
     extensionsErrors.map(({ updateUrl }) => updateUrl)
   )
@@ -259,7 +261,7 @@ export const fetchExtensionsInfo = async (
     extensionsUpdateSummary: {
       batches: batchJobs.length,
       failed: failedServers.size,
-      failedBatches: extensionsErrors.length,
+      failedBatches: extensionsErrors.length - preparationErrors.length,
       succeeded: serverJobs.length - failedServers.size,
       total: serverJobs.length
     }

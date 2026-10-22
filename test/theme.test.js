@@ -22,12 +22,42 @@ test('theme bootstrap applies stored and changed theme modes', async t => {
 
   await import('../js/theme.js')
   assert.equal(globalThis.document.documentElement.dataset.theme, 'dark')
+  assert.equal(globalThis.document.documentElement.dataset.accent, 'blue')
+
+  listeners[0]({ accentPalette: { newValue: 'teal' } }, 'sync')
+  assert.equal(globalThis.document.documentElement.dataset.accent, 'blue')
+  listeners[0]({ accentPalette: { newValue: 'teal' } }, 'local')
+  assert.equal(globalThis.document.documentElement.dataset.accent, 'teal')
 
   listeners[0]({ themeMode: { newValue: 'light' } }, 'local')
   assert.equal(globalThis.document.documentElement.dataset.theme, 'light')
+  assert.equal(globalThis.document.documentElement.dataset.accent, 'teal')
+
+  listeners[0]({ accentPalette: { newValue: 'invalid' } }, 'local')
+  assert.equal(globalThis.document.documentElement.dataset.accent, 'blue')
+  listeners[0]({ accentPalette: { newValue: 'teal' } }, 'local')
+  listeners[0]({ accentPalette: {} }, 'local')
+  assert.equal(globalThis.document.documentElement.dataset.accent, 'blue')
 
   listeners[0]({ themeMode: { newValue: 'invalid' } }, 'local')
   assert.equal(globalThis.document.documentElement.dataset.theme, 'browser')
+})
+
+test('theme bootstrap restores a stored accent palette', async t => {
+  globalThis.document = { documentElement: { dataset: {} } }
+  globalThis.chrome = {
+    storage: {
+      local: { get: (_keys, callback) => callback({ themeMode: 'light', accentPalette: 'teal' }) },
+      onChanged: { addListener () {} }
+    }
+  }
+  t.after(() => {
+    delete globalThis.chrome
+    delete globalThis.document
+  })
+  await import('../js/theme.js?stored-accent')
+  assert.equal(globalThis.document.documentElement.dataset.accent, 'teal')
+  assert.equal(globalThis.document.documentElement.dataset.theme, 'light')
 })
 
 test('popup exposes all theme modes and browser-default CSS', async () => {

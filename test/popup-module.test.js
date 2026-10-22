@@ -67,9 +67,10 @@ test('popup keeps the update check in the Chromium summary', async () => {
   const summary = source.match(
     /<summary class="chromium-status__summary">[\s\S]*?<span>Chromium[\s\S]*?<\/summary>/
   )?.[0]
-  assert.match(summary, /aria-label="\$\{checking \? 'Checking for updates' : 'Check for updates'\}"/)
-  assert.match(summary, />\$\{checking \? 'Checking…' : 'Check now'\}<\/button>/)
-  assert.match(summary, /class="check-now"/)
+  assert.doesNotMatch(summary, /<button/)
+  assert.match(source, /aria-label="\$\{checking \? 'Checking… for updates' : 'Check now for updates'\}"/)
+  assert.match(source, />\$\{checking \? 'Checking…' : 'Check now'\}<\/button>/)
+  assert.match(source, /class="check-now"/)
   assert.match(source, /event\.preventDefault\(\)/)
   assert.match(source, /event\.stopPropagation\(\)/)
   assert.match(styles, /\.chromium-status__summary-content\s*\{[\s\S]*?display: inline-flex;/)
@@ -207,7 +208,7 @@ test('popup only warns when the selected build source is stale', async () => {
 test('popup keeps planned key-rotation notice outside the collapsible status', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /getFeedKeyRotationNotice\(buildFeedKeyId\)/)
-  assert.match(source, /<\/details>\s*\$\{feedKeyRotationNotice && html`/)
+  assert.match(source, /<\/details>[\s\S]*?\$\{feedKeyRotationNotice && html`/)
   assert.match(source, /class="feed-key-notice"/)
 })
 
@@ -239,7 +240,7 @@ test('popup wraps error messages inside their cards', async () => {
 test('popup guards asynchronous initialization and local storage changes', async () => {
   const source = await readFile(new URL('../js/popup.js', import.meta.url), 'utf8')
   assert.match(source, /if \(areaName !== 'local'\)/)
-  assert.match(source, /if \(this\.mounted\) \{\s*this\.setState\(\{\s*\.\.\.config,/)
+  assert.match(source, /if \(this\.mounted\) \{\s*this\.setState\(config,/)
   assert.match(source, /componentWillUnmount \(\) \{\s*this\.mounted = false/)
 })
 

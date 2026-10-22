@@ -10,22 +10,22 @@
   --surface-subtle: #f8f9fa;
   --border: #dadce0;
   --control-background: #ffffff;
-  --accent-soft: #e3f2ed;
-  --action-background: #d6ebe5;
-  --action-hover: #c0e1d7;
-  --action-text: #0b6e69;
-  --success: #1e8e3e;
+  --success: #137333;
   --error: #b00020;
   --icon-filter: none;
   --install-type-background: #e8eaed;
   --install-type-text: #3c4043;
-  --link: #0b6e69;
-  --muted-text: #80868b;
+  --muted-text: #62696f;
   --strong-text: #202124;
   --text: #5f6368;
-  --scrollbar-thumb: #a8b9b5;
-  --scrollbar-thumb-hover: #6f938c;
   color-scheme: light;
+  --accent-soft: #e8f0fe;
+  --action-background: #d2e3fc;
+  --action-hover: #c3d9fb;
+  --action-text: #185abc;
+  --link: #1967d2;
+  --scrollbar-thumb: #aab8cc;
+  --scrollbar-thumb-hover: #748fb6;
   scrollbar-gutter: stable;
 }
 
@@ -35,22 +35,22 @@
   --surface-subtle: #242528;
   --border: #3c4043;
   --control-background: #292a2d;
-  --accent-soft: #304b48;
-  --action-background: #354b47;
-  --action-hover: #405e58;
-  --action-text: #80cbc4;
   --success: #81c995;
   --error: #f28b82;
   --icon-filter: invert(1);
   --install-type-background: #3c4043;
   --install-type-text: #e8eaed;
-  --link: #80cbc4;
   --muted-text: #9aa0a6;
   --strong-text: #f1f3f4;
   --text: #bdc1c6;
-  --scrollbar-thumb: #647874;
-  --scrollbar-thumb-hover: #83a69f;
   color-scheme: dark;
+  --accent-soft: #283b55;
+  --action-background: #2d405b;
+  --action-hover: #385273;
+  --action-text: #8ab4f8;
+  --link: #8ab4f8;
+  --scrollbar-thumb: #63758f;
+  --scrollbar-thumb-hover: #879fc3;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -60,22 +60,53 @@
     --surface-subtle: #242528;
     --border: #3c4043;
     --control-background: #292a2d;
-    --accent-soft: #304b48;
-    --action-background: #354b47;
-    --action-hover: #405e58;
-    --action-text: #80cbc4;
     --success: #81c995;
     --error: #f28b82;
     --icon-filter: invert(1);
     --install-type-background: #3c4043;
     --install-type-text: #e8eaed;
-    --link: #80cbc4;
     --muted-text: #9aa0a6;
     --strong-text: #f1f3f4;
     --text: #bdc1c6;
+    color-scheme: dark;
+    --accent-soft: #283b55;
+    --action-background: #2d405b;
+    --action-hover: #385273;
+    --action-text: #8ab4f8;
+    --link: #8ab4f8;
+    --scrollbar-thumb: #63758f;
+    --scrollbar-thumb-hover: #879fc3;
+  }
+}
+:root[data-accent=teal] {
+  --accent-soft: #e3f2ed;
+  --action-background: #d6ebe5;
+  --action-hover: #c0e1d7;
+  --action-text: #0b6e69;
+  --link: #0b6e69;
+  --scrollbar-thumb: #a8b9b5;
+  --scrollbar-thumb-hover: #6f938c;
+}
+
+:root[data-accent=teal][data-theme=dark] {
+  --accent-soft: #304b48;
+  --action-background: #354b47;
+  --action-hover: #405e58;
+  --action-text: #80cbc4;
+  --link: #80cbc4;
+  --scrollbar-thumb: #647874;
+  --scrollbar-thumb-hover: #83a69f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-accent=teal][data-theme=browser] {
+    --accent-soft: #304b48;
+    --action-background: #354b47;
+    --action-hover: #405e58;
+    --action-text: #80cbc4;
+    --link: #80cbc4;
     --scrollbar-thumb: #647874;
     --scrollbar-thumb-hover: #83a69f;
-    color-scheme: dark;
   }
 }
 :root::-webkit-scrollbar {
@@ -168,7 +199,7 @@ label > select {
   font-weight: 500;
   height: calc(1.5em + 0.75rem + 2px);
   padding: 0.375rem 1.75rem 0.375rem 0.75rem;
-  transition: background-color 140ms ease, border-color 140ms ease;
+  transition: border-color 140ms ease;
   width: 100%;
 }
 label > select:hover:not(:disabled) {
@@ -176,6 +207,46 @@ label > select:hover:not(:disabled) {
   border-color: var(--muted-text);
 }
 
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+  label > select {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+    padding-right: 0.75rem;
+  }
+  select::picker(select) {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--strong-text);
+    font: inherit;
+    max-width: calc(100vw - 2rem);
+    padding: 0.25rem;
+  }
+  select option {
+    border-radius: 4px;
+    color: var(--strong-text);
+    padding: 0.5rem;
+    white-space: normal;
+  }
+  select option:checked {
+    background: var(--action-background);
+    color: var(--action-text);
+  }
+  select option:hover,
+  select:not(:has(option:hover)) option:focus-visible {
+    background: var(--link);
+    color: var(--background);
+  }
+  select option::checkmark {
+    color: currentColor;
+  }
+}
 section {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -255,7 +326,7 @@ section > small {
   display: inline-flex;
   height: 30px;
   justify-content: center;
-  transition: border-color 140ms ease, background-color 140ms ease;
+  transition: border-color 140ms ease;
   width: 30px;
 }
 .popup-header .header-cell a:hover {
@@ -294,6 +365,7 @@ details[open] > summary::before {
 .chromium-status {
   display: block;
   margin: 0;
+  position: relative;
 }
 .chromium-status__summary {
   color: var(--strong-text);
@@ -311,6 +383,8 @@ details[open] > summary::before {
   font-weight: normal;
   margin: 0.25rem 0 0 0.75rem;
   width: calc(100% - 0.75rem);
+  min-height: calc(1.5875rem + 2px);
+  padding-right: 7rem;
 }
 .chromium-status__installed code {
   color: var(--success);
@@ -500,6 +574,9 @@ button.check-now {
   margin: 0 0 0 auto;
   min-width: 0;
   padding: 0.25rem 0.45rem;
+  position: absolute;
+  right: 0;
+  top: 1.51875rem;
 }
 button.check-now:hover {
   background: var(--action-hover);
@@ -556,7 +633,8 @@ button.check-now:hover {
   margin-top: 0.5rem;
 }
 
-.theme-setting {
+.theme-setting,
+.accent-setting {
   display: block;
   margin: 0.75rem 0;
 }

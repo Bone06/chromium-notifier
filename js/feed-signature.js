@@ -28,6 +28,14 @@ export const TRUSTED_FEED_KEYS = Object.freeze({
   })
 })
 
+export const isTrustedFeedKey = (
+  keyId,
+  { trustedKeys = TRUSTED_FEED_KEYS, rotation = PLANNED_FEED_KEY_ROTATION, now = Date.now() } = {}
+) => Object.hasOwn(trustedKeys, keyId) && (
+  keyId !== rotation?.outgoingKeyId ||
+  (Number.isFinite(Date.parse(rotation.cutoverAt)) && now < Date.parse(rotation.cutoverAt))
+)
+
 const parseSignature = text => {
   let document
   try { document = JSON.parse(text) } catch { throw new Error('Invalid feed signature JSON') }
@@ -51,11 +59,14 @@ const decodeBase64Url = value => {
 export const verifySignedBuildFeed = async (
   feedText,
   signatureText,
-  trustedKeys = TRUSTED_FEED_KEYS
+  trustedKeys = TRUSTED_FEED_KEYS,
+  options = {}
 ) => {
   const document = parseSignature(signatureText)
+  if (!isTrustedFeedKey(document.keyId, { ...options, trustedKeys })) {
+    throw new Error(`Untrusted feed signing key: ${document.keyId}`)
+  }
   const jwk = trustedKeys[document.keyId]
-  if (!jwk) throw new Error(`Untrusted feed signing key: ${document.keyId}`)
   const key = await crypto.subtle.importKey(
     'jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
   )

@@ -15,6 +15,14 @@
   :root[data-theme="browser"] { @include mix.theme(dark); }
 }
 
+:root[data-accent="teal"] { @include mix.accent(teal, light); }
+:root[data-accent="teal"][data-theme="dark"] { @include mix.accent(teal, dark); }
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="teal"][data-theme="browser"] {
+    @include mix.accent(teal, dark);
+  }
+}
+
 // Keep the draggable area wider than the visible thumb, without native arrows.
 :root::-webkit-scrollbar { width: 10px; }
 :root::-webkit-scrollbar-track { background: var(--background); }
@@ -89,7 +97,8 @@ label {
     font-weight: 500;
     height: calc(1.5em + 0.75rem + 2px);
     padding: 0.375rem 1.75rem 0.375rem 0.75rem;
-    transition: background-color 140ms ease, border-color 140ms ease;
+    // Background and text switch together, without a low-contrast theme tween.
+    transition: border-color 140ms ease;
     width: 100%;
 
     &:hover:not(:disabled) {
@@ -97,6 +106,52 @@ label {
       border-color: var(--muted-text);
     }
   }
+}
+
+// Keep native select semantics and keyboard handling, with a themed picker on
+// supporting Chromium versions. Older versions retain their native fallback.
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) { appearance: base-select; }
+
+  label > select {
+    align-items: center;
+    display: flex;
+    gap: token.$space-2;
+    justify-content: space-between;
+    padding-right: 0.75rem;
+  }
+
+  select::picker(select) {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: token.$radius-medium;
+    color: var(--strong-text);
+    font: inherit;
+    max-width: calc(100vw - 2rem);
+    padding: token.$space-1;
+  }
+
+  select option {
+    border-radius: token.$radius-small;
+    color: var(--strong-text);
+    padding: token.$space-2;
+    white-space: normal;
+  }
+
+  select option:checked {
+    background: var(--action-background);
+    color: var(--action-text);
+  }
+
+  // A solid accent distinguishes the navigation target from the saved choice.
+  select option:hover,
+  select:not(:has(option:hover)) option:focus-visible {
+    background: var(--link);
+    color: var(--background);
+  }
+
+  select option::checkmark { color: currentColor; }
 }
 
 section {
@@ -168,7 +223,7 @@ section {
     display: inline-flex;
     height: 30px;
     justify-content: center;
-    transition: border-color 140ms ease, background-color 140ms ease;
+    transition: border-color 140ms ease;
     width: 30px;
 
     &:hover {
@@ -207,6 +262,7 @@ details[open] > summary::before { transform: translateY(-50%) rotate(90deg); }
 .chromium-status {
   display: block;
   margin: 0;
+  position: relative;
 
   &__summary {
     color: var(--strong-text);
@@ -226,6 +282,8 @@ details[open] > summary::before { transform: translateY(-50%) rotate(90deg); }
     font-weight: normal;
     margin: token.$space-1 0 0 0.75rem;
     width: calc(100% - 0.75rem);
+    min-height: calc(0.75rem * 1.45 + 0.5rem + 2px);
+    padding-right: 7rem;
   }
 
   &__installed code {
@@ -391,6 +449,9 @@ button.check-now {
   margin: 0 0 0 auto;
   min-width: 0;
   padding: 0.25rem 0.45rem;
+  position: absolute;
+  right: 0;
+  top: calc(0.875rem * 1.45 + 0.25rem);
 
   &:hover {
     background: var(--action-hover);
@@ -425,4 +486,5 @@ button.check-now {
 
 .header-cell img { filter: var(--icon-filter); }
 .last-error { margin-top: token.$space-2; }
-.theme-setting { display: block; margin: token.$space-3 0; }
+.theme-setting,
+.accent-setting { display: block; margin: token.$space-3 0; }

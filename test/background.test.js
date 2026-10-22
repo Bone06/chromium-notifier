@@ -34,7 +34,7 @@ const createBuildFeed = version => ({
     tag: 'stable-codecs-sync',
     version
   }],
-  generatedAt: '2026-07-17T12:00:00.000Z',
+  generatedAt: new Date().toISOString(),
   schemaVersion: 1,
   sources: [{
     checkedAt: '2026-07-17T12:00:00.000Z',
@@ -225,7 +225,8 @@ test('background registers listeners, deduplicates checks and isolates extension
   assert.equal(store.versions.win64[0].version, '150.0.0.2')
   assert.equal(store.buildFeedEtag, '"feed-2"')
   assert.equal(store.buildFeedKeyId, 'feed-2026-02')
-  assert.match(store.extensionsGeneralError, /Invalid extension update URL/)
+  assert.equal(store.extensionsGeneralError, null)
+  assert.match(store.extensionsErrors[0].message, /Invalid extension update URL/)
 
   extensions = []
   const fetchesBeforeNotModified = fetchCalls
@@ -243,6 +244,21 @@ test('background registers listeners, deduplicates checks and isolates extension
   assert.equal(store.versions.win64[0].version, '150.0.0.2')
   assert.equal(store.buildFeedKeyId, 'feed-2026-02')
   assert.equal(store.woolyssError, null)
+
+  const lastSuccessfulCheck = store.lastSuccessAt
+  store.buildFeedKeyId = 'retired-key'
+  const retiredResponse = new Promise(resolve => {
+    events.message.listeners[0]({ type: 'check-now' }, {}, resolve)
+  })
+  await retiredResponse
+  assert.equal(conditionalHeader, null)
+  assert.match(store.woolyssError, /currently trusted cache/)
+  assert.equal(store.lastSuccessAt, lastSuccessfulCheck)
+  store.buildFeedKeyId = 'feed-2026-02'
+  store.buildFeedGeneratedAt = new Date(Date.now() - 4 * 3600000).toISOString()
+  await new Promise(resolve => events.message.listeners[0]({ type: 'check-now' }, {}, resolve))
+  assert.equal(conditionalHeader, null)
+  assert.match(store.woolyssError, /currently trusted cache/)
 
   delete store.buildFeedKeyId
   let upgradedConditionalHeader
@@ -264,6 +280,17 @@ test('background registers listeners, deduplicates checks and isolates extension
   assert.deepEqual(await upgradedResponse, { ok: true })
   assert.equal(upgradedConditionalHeader, null)
   assert.equal(store.buildFeedKeyId, 'feed-2026-02')
+
+  const acceptedGeneration = store.buildFeedGeneratedAt
+  for (const offset of [-4 * 3600000, 6 * 60000]) {
+    fetchImplementation = async url => String(url).endsWith('.sig')
+      ? new Response(JSON.stringify({ algorithm: 'ECDSA-P256-SHA256', keyId: 'feed-2026-02', schemaVersion: 1, signature: 'A'.repeat(86) }))
+      : new Response(JSON.stringify({ ...createBuildFeed('999.0.0.0'), generatedAt: new Date(Date.now() + offset).toISOString() }))
+    await new Promise(resolve => events.message.listeners[0]({ type: 'check-now' }, {}, resolve))
+    assert.match(store.woolyssError, /stale|future/)
+    assert.equal(store.buildFeedGeneratedAt, acceptedGeneration)
+    assert.equal(store.versions.win64[0].version, '150.0.0.3')
+  }
 
   const cachedVersion = store.versions.win64[0].version
   fetchImplementation = async () => { throw new TypeError('Failed to fetch') }

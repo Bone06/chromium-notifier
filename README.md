@@ -31,6 +31,10 @@ management where Chromium permits it.
 - The extension uses the signed production HTTPS feed and revalidates it with
   ETag / `If-None-Match`; unchanged `304` responses retain the previously
   verified local cache.
+- Conditional cache reuse also requires a currently trusted signing key and
+  a feed generated within the last three hours. Older cached data is retained
+  with an error/stale warning; a generation time more than five minutes in the
+  future is rejected without advancing rollback protection.
 - The update manifest targets the 4.1.0 CRX asset from this repository's
   [latest GitHub release](https://github.com/Bone06/chromium-notifier/releases/latest).
 
@@ -44,6 +48,7 @@ management where Chromium permits it.
 - enable, disable and remove extension actions where allowed;
 - custom badge colors;
 - light, dark and browser-default popup themes;
+- independent Chromium blue (default) and Teal accent palettes, saved locally;
 - cached data and per-source stale/error reporting;
 - conditional ETag feed requests to avoid downloading unchanged metadata.
 

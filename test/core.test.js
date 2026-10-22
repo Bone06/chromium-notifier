@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 import {
+  assertBuildFeedFreshness,
   compareVersions,
   CURRENT_SCHEMA_VERSION,
   createExtensionUpdateBatches,
@@ -19,6 +20,7 @@ import {
   getChromiumVersionFromUserAgentData,
   getExtensionDownloadUrl,
   getExtensionCapabilities,
+  getSafeExtensionUpdateUrl,
   groupExtensionsByUpdateInfo,
   getInstallTypeLabel,
   getPlatformDisplayName,
@@ -328,6 +330,20 @@ test('validateBuildSourcesFeed rejects unsafe and inconsistent feeds', () => {
   )
 })
 
+test('feed identifiers and labels share the producer limits and normalize prototype-like platforms safely', () => {
+  const feed = structuredClone(buildSourceFeed)
+  feed.sources[0].name = 'x'.repeat(121)
+  assert.throws(() => validateBuildSourcesFeed(feed), /sources\[0\]/)
+  feed.sources[0].name = 'valid'
+  feed.builds[0].revision = 123
+  assert.throws(() => validateBuildSourcesFeed(feed), /builds\[0\]/)
+  feed.builds[0].revision = '123'
+  feed.builds[0].platform = 'constructor'
+  const { versions } = validateBuildSourcesFeed(feed)
+  assert.equal(versions.constructor[0].revision, '123')
+  assert.ok(Object.hasOwn(versions, 'constructor'))
+})
+
 test('parseUpdateManifest rejects oversized and unclosed manifests', () => {
   assert.throws(
     () => parseUpdateManifest(`<gupdate>${'<app '.repeat(100000)}`),
@@ -347,6 +363,37 @@ test('signed feed rollback detection rejects older generations', () => {
     '2026-07-22T12:00:00Z', '2026-07-22T12:00:00Z'
   ), false)
   assert.equal(isBuildFeedRollback(undefined, '2026-07-22T12:00:00Z'), false)
+})
+
+test('feed age and clock skew are bounded independently of build publication dates', () => {
+  const now = Date.parse('2026-10-22T12:00:00Z')
+  assert.doesNotThrow(() => assertBuildFeedFreshness('2026-10-22T09:00:00Z', now))
+  assert.doesNotThrow(() => assertBuildFeedFreshness('2026-10-22T12:05:00Z', now))
+  assert.throws(() => assertBuildFeedFreshness('2026-10-22T08:59:59Z', now), /stale/)
+  assert.throws(() => assertBuildFeedFreshness('2026-10-22T12:05:01Z', now), /future/)
+  assert.equal(isBuildFeedRollback('2099-01-01T00:00:00Z', '2026-10-22T12:00:00Z', now), false)
+})
+
+test('IPv6 filtering does not classify DNS hostnames as address literals', () => {
+  for (const host of ['fcorp.example.com', 'fdserver.example.com', 'fe80.example.com']) {
+    assert.ok(getSafeExtensionUpdateUrl(`https://${host}/updates.xml`))
+  }
+  for (const host of ['[::1]', '[fc00::1]', '[fe80::1]', '[::ffff:127.0.0.1]']) {
+    assert.equal(getSafeExtensionUpdateUrl(`https://${host}/updates.xml`), null)
+  }
+})
+
+test('XML attribute parsing rejects malformed and over-limit attributes promptly', () => {
+  const start = performance.now()
+  for (const attributes of [
+    'a'.repeat(64000),
+    'appid="one" appid="two"',
+    `appid="${'a'.repeat(8193)}"`,
+    Array.from({ length: 65 }, (_, index) => `a${index}="v"`).join(' ')
+  ]) {
+    assert.throws(() => parseUpdateManifest(`<gupdate><app ${attributes}/></gupdate>`), /Invalid extension update manifest/)
+  }
+  assert.ok(performance.now() - start < 1000)
 })
 
 test('build feed state transitions track attempts and preserve cached data', () => {

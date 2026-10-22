@@ -7,14 +7,37 @@ const decodeXml = value =>
     apos: "'"
   })[entity])
 
-const getAttributes = source =>
-  Array.from(source.matchAll(/([\w:-]+)\s*=\s*(["'])(.*?)\2/gs)).reduce(
-    (attributes, [, name, , value]) => ({
-      ...attributes,
-      [name]: decodeXml(value)
-    }),
-    {}
-  )
+const getAttributes = source => {
+  const attributes = {}
+  let cursor = 0
+  let count = 0
+  const invalid = () => { throw new Error('Invalid extension update manifest attributes') }
+  const whitespace = () => {
+    while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
+  }
+  while (cursor < source.length) {
+    whitespace()
+    if (cursor === source.length) break
+    const start = cursor
+    while (cursor < source.length && /[\w:-]/.test(source[cursor])) cursor += 1
+    if (cursor === start || cursor - start > 128 || ++count > 64) invalid()
+    const name = source.slice(start, cursor)
+    whitespace()
+    if (source[cursor++] !== '=') invalid()
+    whitespace()
+    const quote = source[cursor++]
+    if (quote !== '"' && quote !== "'") invalid()
+    const valueStart = cursor
+    while (cursor < source.length && source[cursor] !== quote) cursor += 1
+    if (cursor === source.length || cursor - valueStart > 8192 || Object.hasOwn(attributes, name)) invalid()
+    Object.defineProperty(attributes, name, {
+      enumerable: true, value: decodeXml(source.slice(valueStart, cursor))
+    })
+    cursor += 1
+    if (cursor < source.length && !/\s/.test(source[cursor])) invalid()
+  }
+  return attributes
+}
 
 export const getHttpUrl = value => {
   try {
@@ -120,6 +143,7 @@ const isPrivateIpv4 = hostname => {
 }
 
 const isPrivateIpv6 = hostname => {
+  if (!hostname.startsWith('[') || !hostname.endsWith(']')) return false
   const value = hostname.replace(/^\[|\]$/g, '').toLowerCase()
   return value === '::' || value === '::1' || value.startsWith('fc') ||
     value.startsWith('fd') || /^fe[89ab]/.test(value) ||
@@ -431,6 +455,11 @@ const hasControlCharacters = value => [...value].some(character => {
   return code <= 31 || code === 127
 })
 
+const validFeedIdentifier = value => typeof value === 'string' &&
+  value.length <= 120 && /^[a-z0-9]+(?:[a-z0-9_-]*[a-z0-9])?$/.test(value)
+const validFeedLabel = value => typeof value === 'string' && value.trim() &&
+  value.length <= 120 && !hasControlCharacters(value)
+
 export const validateBuildSourcesFeed = response => {
   if (
     !hasOnlyKeys(response, ['schemaVersion', 'generatedAt', 'sources', 'builds']) ||
@@ -455,10 +484,8 @@ export const validateBuildSourcesFeed = response => {
         'id', 'name', 'repository', 'checkedAt', 'lastSuccessAt', 'stale',
         'error'
       ]) ||
-      typeof source.id !== 'string' ||
-      !source.id.trim() ||
-      typeof source.name !== 'string' ||
-      !source.name.trim() ||
+      !validFeedIdentifier(source.id) ||
+      !validFeedLabel(source.name) ||
       !getHttpsUrl(source.repository) ||
       typeof source.stale !== 'boolean' ||
       (source.error !== null &&
@@ -486,23 +513,14 @@ export const validateBuildSourcesFeed = response => {
         'id', 'sourceId', 'platform', 'architecture', 'tag', 'channel',
         'version', 'publishedAt', 'releaseUrl', 'capabilities', 'downloads'
       ], ['displayName', 'revision']) ||
-      typeof build.id !== 'string' ||
-      !build.id.trim() ||
-      typeof build.platform !== 'string' ||
-      !/^[a-z0-9_-]+$/.test(build.platform) ||
-      typeof build.architecture !== 'string' ||
-      !build.architecture.trim() ||
-      typeof build.tag !== 'string' ||
-      !build.tag.trim() ||
-      (build.displayName !== undefined &&
-        (typeof build.displayName !== 'string' ||
-          !build.displayName.trim() ||
-          build.displayName.length > 120 ||
-          hasControlCharacters(build.displayName))) ||
-      typeof build.channel !== 'string' ||
-      !build.channel.trim() ||
-      !/^\d+(?:\.\d+){3}$/.test(build.version || '') ||
-      (build.revision !== undefined && !/^\d+$/.test(build.revision)) ||
+      !validFeedIdentifier(build.id) ||
+      !validFeedIdentifier(build.platform) ||
+      !validFeedIdentifier(build.architecture) ||
+      !validFeedIdentifier(build.tag) ||
+      (build.displayName !== undefined && !validFeedLabel(build.displayName)) ||
+      !validFeedIdentifier(build.channel) ||
+      typeof build.version !== 'string' || !/^\d+(?:\.\d+){3}$/.test(build.version) ||
+      (build.revision !== undefined && (typeof build.revision !== 'string' || !/^\d+$/.test(build.revision))) ||
       !source ||
       !hasOnlyKeys(build.capabilities, [
         'official', 'proprietaryCodecs', 'sync', 'widevine'
@@ -526,10 +544,8 @@ export const validateBuildSourcesFeed = response => {
     const links = build.downloads.map((download, downloadIndex) => {
       if (
         !hasOnlyKeys(download, ['label', 'name', 'size', 'url'], ['sha256']) ||
-        typeof download.label !== 'string' ||
-        !download.label.trim() ||
-        typeof download.name !== 'string' ||
-        !download.name.trim() ||
+        !validFeedLabel(download.label) ||
+        !validFeedLabel(download.name) ||
         !Number.isSafeInteger(download.size) ||
         download.size <= 0 ||
         !getHttpsUrl(download.url) ||
@@ -563,7 +579,9 @@ export const validateBuildSourcesFeed = response => {
       timestamp: publishedAt / 1000,
       version: build.version
     }
-    versions[build.platform] ||= []
+    if (!Object.hasOwn(versions, build.platform)) {
+      Object.defineProperty(versions, build.platform, { enumerable: true, value: [] })
+    }
     versions[build.platform].push(normalizedBuild)
   })
 
@@ -574,10 +592,24 @@ export const validateBuildSourcesFeed = response => {
   }
 }
 
-export const isBuildFeedRollback = (previousGeneratedAt, nextGeneratedAt) =>
+export const MAX_FEED_AGE_MS = 3 * 60 * 60 * 1000
+export const MAX_FEED_FUTURE_SKEW_MS = 5 * 60 * 1000
+
+export const assertBuildFeedFreshness = (generatedAt, now = Date.now()) => {
+  const timestamp = getIsoTimestamp(generatedAt, 'generatedAt')
+  if (timestamp - now > MAX_FEED_FUTURE_SKEW_MS) {
+    throw new Error('Chromatic Feed generation time is unexpectedly in the future')
+  }
+  if (now - timestamp > MAX_FEED_AGE_MS) {
+    throw new Error('Chromatic Feed is stale: generated more than three hours ago')
+  }
+}
+
+export const isBuildFeedRollback = (previousGeneratedAt, nextGeneratedAt, now = Date.now()) =>
   Boolean(
     previousGeneratedAt &&
     Number.isFinite(Date.parse(previousGeneratedAt)) &&
+    Date.parse(previousGeneratedAt) <= now + MAX_FEED_FUTURE_SKEW_MS &&
     Date.parse(nextGeneratedAt) < Date.parse(previousGeneratedAt)
   )
 

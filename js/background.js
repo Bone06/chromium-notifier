@@ -13,10 +13,11 @@ import {
   hasSnapshotRevisionUpdate,
   getBuildFeedErrorState,
   getBuildFeedSuccessState,
+  assertBuildFeedFreshness,
   isBuildFeedRollback,
   validateBuildSourcesFeed
 } from './core.js'
-import { verifySignedBuildFeed } from './feed-signature.js'
+import { isTrustedFeedKey, verifySignedBuildFeed } from './feed-signature.js'
 
 const ALARM_NAME = 'main'
 const RECOVERY_ALARM_NAME = 'feed-recovery'
@@ -52,10 +53,15 @@ const setRecoveryAlarm = async scheduled => {
 
 const fetchBuildFeedOnce = async config => {
   const headers = {}
+  let freshCache = false
+  try {
+    assertBuildFeedFreshness(config.buildFeedGeneratedAt)
+    freshCache = true
+  } catch { /* Expired cache requires an unconditional, signed response. */ }
   if (
     config.buildFeedEtag &&
-    config.buildFeedKeyId &&
-    config.buildFeedGeneratedAt &&
+    isTrustedFeedKey(config.buildFeedKeyId) &&
+    freshCache &&
     config.versions &&
     Object.keys(config.versions).length
   ) {
@@ -71,9 +77,10 @@ const fetchBuildFeedOnce = async config => {
     }
   )
   if (response.notModified) {
-    if (!config.versions || !Object.keys(config.versions).length) {
-      throw new Error('Build source feed returned 304 without cached data')
+    if (!headers['If-None-Match'] || !isTrustedFeedKey(config.buildFeedKeyId)) {
+      throw new Error('Build source feed returned 304 without a currently trusted cache')
     }
+    assertBuildFeedFreshness(config.buildFeedGeneratedAt)
     return { notModified: true }
   }
 
@@ -158,11 +165,15 @@ const update = async (...args) => {
       throw buildFeedResult.reason
     }
     if (buildFeedResult.value.notModified) {
+      if (!isTrustedFeedKey(config.buildFeedKeyId)) throw new Error('Cached feed signing key is no longer trusted')
+      assertBuildFeedFreshness(config.buildFeedGeneratedAt)
       newState = getBuildFeedSuccessState(config.versions, now)
     } else {
       const { generatedAt, sources, versions } = validateBuildSourcesFeed(
         buildFeedResult.value.json
       )
+      assertBuildFeedFreshness(generatedAt)
+      if (!isTrustedFeedKey(buildFeedResult.value.keyId)) throw new Error('Feed signing key is no longer trusted')
       if (isBuildFeedRollback(config.buildFeedGeneratedAt, generatedAt)) {
         throw new Error('Signed build source feed is older than the cached feed')
       }
@@ -275,9 +286,19 @@ const updateBadge = async () => {
   ])
 }
 
-chrome.storage.onChanged.addListener(() =>
-  runBackgroundTask('Badge update', updateBadge())
-)
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local') return
+  const badgeTask = runBackgroundTask('Badge update', updateBadge())
+  if (changes.extensionsTrack?.newValue === true && changes.extensionsTrack.oldValue !== true) {
+    const check = currentUpdate
+      ? currentUpdate.then(async () => {
+          if ((await getConfig()).extensionsTrack) await main('tracking-enabled')
+        })
+      : main('tracking-enabled')
+    runBackgroundTask('Extension tracking update', check)
+  }
+  return badgeTask
+})
 
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === ALARM_NAME || alarm.name === RECOVERY_ALARM_NAME) {

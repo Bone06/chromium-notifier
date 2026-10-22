@@ -131,6 +131,19 @@ test('fetchExtensionInfo performs a real HTTP update check for multiple ids', as
   ])
 })
 
+test('invalid update URLs are isolated before batch creation', async t => {
+  const fixture = await startServer()
+  t.after(fixture.close)
+  const result = await fetchLocalExtensionsInfo([
+    { id: 'good', updateUrl: `${fixture.baseUrl}/updates` },
+    { id: 'bad', updateUrl: 'file:///invalid.xml' },
+    { id: 'prototype', updateUrl: '__proto__' }
+  ], '156.0.0.0')
+  assert.equal(result.extensionsInfo[0].id, 'good')
+  assert.equal(result.extensionsErrors.length, 2)
+  assert.deepEqual(result.extensionsUpdateSummary, { batches: 1, failed: 2, failedBatches: 0, succeeded: 1, total: 3 })
+})
+
 test('fetchExtensionInfo blocks loopback update servers by default', async t => {
   const fixture = await startServer()
   t.after(fixture.close)

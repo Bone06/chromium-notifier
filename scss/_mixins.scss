@@ -1,6 +1,12 @@
 @use "sass:map";
 @use "tokens";
 
+@mixin accent($palette, $mode) {
+  @each $property, $value in map.get(tokens.$accents, $palette, $mode) {
+    --#{$property}: #{$value};
+  }
+}
+
 @mixin theme($name) {
   @each $property, $value in map.get(tokens.$themes, $name) {
     @if $property == color-scheme {
@@ -9,6 +15,7 @@
       --#{$property}: #{$value};
     }
   }
+  @include accent(blue, $name);
 }
 
 @mixin focus-ring {

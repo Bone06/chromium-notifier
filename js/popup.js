@@ -2,9 +2,7 @@ import { Component, h, render } from './vendor/preact-11.0.1.mjs'
 import htm from './vendor/htm-3.1.1.js'
 import {
   getConfig,
-  getExtensionsInfo,
-  getInstalledExtensions,
-  getUserAgentData
+  getInstalledExtensions
 } from './utils.js'
 import {
   DEFAULT_BADGE_COLORS,
@@ -12,6 +10,7 @@ import {
   getCompactBuildName,
   getChromiumVersionStatus,
   getDefaultBadgeColors,
+  getHttpUrl,
   getExtensionDownloadUrl,
   getExtensionCapabilities,
   getInstallTypeLabel,
@@ -30,7 +29,11 @@ const CHROMATIC_FEED_PROJECT_URL =
  * Event handlers
  */
 
+let snapshotSettingRequest = 0
+let selectionRequest = 0
+
 const changeBoolSetting = ({ target: { checked, name } }) => {
+  const request = name === 'notifySnapshotRevisions' ? ++snapshotSettingRequest : null
   if (name === 'useCustomColors') {
     chrome.storage.local.set(
       checked
@@ -41,64 +44,61 @@ const changeBoolSetting = ({ target: { checked, name } }) => {
   }
 
   if (name === 'notifySnapshotRevisions' && checked) {
-    chrome.storage.local.get(
-      ['arch', 'snapshotRevisionsSeen', 'tag', 'versions'],
-      ({ arch, snapshotRevisionsSeen = {}, tag, versions = {} }) => {
-        const current = versions[arch]?.find(build => build.tag === tag)
-        chrome.storage.local.set({
-          notifySnapshotRevisions: true,
-          snapshotRevisionsSeen: current?.channel === 'snapshot'
-            ? { ...snapshotRevisionsSeen, [current.id]: current.revision }
-            : snapshotRevisionsSeen
-        })
-      }
-    )
+    const enableWithBaseline = async () => {
+      let config
+      let selection
+      do {
+        selection = selectionRequest
+        config = await getConfig()
+        if (request !== snapshotSettingRequest) return
+      } while (selection !== selectionRequest)
+      const { arch, snapshotRevisionsSeen = {}, tag, versions = {} } = config
+      const current = versions[arch]?.find(build => build.tag === tag)
+      return chrome.storage.local.set({
+        notifySnapshotRevisions: true,
+        snapshotRevisionsSeen: current?.channel === 'snapshot'
+          ? { ...snapshotRevisionsSeen, [current.id]: current.revision }
+          : snapshotRevisionsSeen
+      })
+    }
+    enableWithBaseline().catch(error => console.error(error))
     return
   }
 
-  const newState = {
-    [name]: checked
-  }
-
-  if (name === 'extensionsTrack' && checked) {
-    getUserAgentData()
-      .then(({ uaFullVersion }) => getExtensionsInfo(uaFullVersion))
-      .then(extensionsResult => {
-        Object.assign(newState, extensionsResult)
-      })
-      .finally(() => {
-        chrome.storage.local.set(newState)
-      })
-  } else {
-    chrome.storage.local.set(newState)
-  }
+  // Persist the choice immediately; the service worker owns network checks.
+  chrome.storage.local.set({ [name]: checked })
 }
 
-const changePlatform = e =>
-  chrome.storage.local.set({
+const changePlatform = e => {
+  selectionRequest += 1
+  return chrome.storage.local.set({
     arch: e.target.value,
     tag: null
   })
+}
 
 const changeTag = e => {
   const tag = e.target.value
-  chrome.storage.local.get(
-    ['arch', 'notifySnapshotRevisions', 'snapshotRevisionsSeen', 'versions'],
-    ({ arch, notifySnapshotRevisions, snapshotRevisionsSeen = {}, versions = {} }) => {
-      const current = versions[arch]?.find(build => build.tag === tag)
-      chrome.storage.local.set({
-        snapshotRevisionsSeen: notifySnapshotRevisions &&
-          current?.channel === 'snapshot'
-          ? { ...snapshotRevisionsSeen, [current.id]: current.revision }
-          : snapshotRevisionsSeen,
-        tag
-      })
-    }
-  )
+  const request = ++selectionRequest
+  getConfig().then(({ arch, notifySnapshotRevisions, snapshotRevisionsSeen = {}, versions = {} }) => {
+    if (request !== selectionRequest) return
+    const current = versions[arch]?.find(build => build.tag === tag)
+    return chrome.storage.local.set({
+      ...(arch ? { arch } : {}),
+      snapshotRevisionsSeen: notifySnapshotRevisions &&
+        current?.channel === 'snapshot'
+        ? { ...snapshotRevisionsSeen, [current.id]: current.revision }
+        : snapshotRevisionsSeen,
+      tag
+    })
+  }).catch(error => console.error(error))
 }
 
 const changeTheme = e =>
   chrome.storage.local.set({ themeMode: e.target.value })
+
+const changeAccent = e =>
+  chrome.storage.local.set({ accentPalette: e.target.value })
 
 /*
  * Components
@@ -156,16 +156,6 @@ const ChromiumInfo = ({
               : ''}"
           >${currentVersion ? `v${currentVersion}` : 'version unavailable'}</code>
         </span>
-        <button
-          aria-busy="${checking}"
-          aria-label="${checking ? 'Checking for updates' : 'Check for updates'}"
-          aria-live="polite"
-          class="check-now"
-          disabled="${checking}"
-          onClick="${checkForUpdates}"
-          title="Check for updates"
-          type="button"
-        >${checking ? 'Checking…' : 'Check now'}</button>
       </span>
     </summary>
     <div class="details-content">
@@ -247,6 +237,16 @@ const ChromiumInfo = ({
       `}
     </div>
   </details>
+  <button
+    aria-busy="${checking}"
+    aria-label="${checking ? 'Checking… for updates' : 'Check now for updates'}"
+    aria-live="polite"
+    class="check-now"
+    disabled="${checking}"
+    onClick="${checkForUpdates}"
+    title="Check for updates"
+    type="button"
+  >${checking ? 'Checking…' : 'Check now'}</button>
   ${feedKeyRotationNotice && html`
     <p class="feed-key-notice">${feedKeyRotationNotice}</p>
   `}
@@ -446,7 +446,7 @@ const ExtensionsInfo = ({
                 updateUrl
               }) => html`
                 <li key="${`${updateUrl}:${batch || 0}`}">
-                  <code>${new URL(updateUrl).host}</code>${totalBatches > 1
+                  <code>${getHttpUrl(updateUrl)?.host || 'Invalid update server'}</code>${totalBatches > 1
                     ? ` (batch ${batch}/${totalBatches})`
                     : ''}: ${message}
                 </li>
@@ -463,9 +463,9 @@ const Header = ({ version }) => html`
   <div class="popup-header">
     <img class="popup-header__icon" alt="" src="../img/icon_48.png" />
     <div class="popup-header__content">
-      <p class="popup-header__title">
+      <h1 class="popup-header__title">
         Chromium Update Notifications
-      </p>
+      </h1>
       <div class="popup-header__credit">
         <span>Powered by </span>
         <a
@@ -512,6 +512,7 @@ class Section extends Component {
 }
 
 const Settings = ({
+  accentPalette,
   arch,
   badgeColors = {},
   current,
@@ -636,6 +637,14 @@ const Settings = ({
           <option selected="${themeMode === 'dark'}" value="dark"
             >Dark</option
           >
+        </select>
+      </label>
+
+      <label class="accent-setting">
+        <p>Interface color</p>
+        <select onChange="${changeAccent}">
+          <option selected="${accentPalette !== 'teal'}" value="blue">Chromium blue</option>
+          <option selected="${accentPalette === 'teal'}" value="teal">Teal</option>
         </select>
       </label>
 
@@ -790,8 +799,35 @@ class App extends Component {
       Object.keys(changes).reduce(
         (acc, key) => ({ ...acc, [key]: changes[key].newValue }),
         {}
-      )
+      ),
+      () => this.refreshSnapshotNotice(this.state)
     )
+  }
+
+  refreshSnapshotNotice = config => {
+    if (!this.mounted) return
+    const current = config.versions?.[config.arch]?.find(build => build.tag === config.tag)
+    const pending = hasSnapshotRevisionUpdate({
+      current,
+      notifySnapshotRevisions: config.notifySnapshotRevisions,
+      snapshotRevisionsSeen: config.snapshotRevisionsSeen
+    })
+    const sameNotice = config.notifySnapshotRevisions && this.snapshotNotice && current &&
+      this.snapshotNotice?.id === current?.id &&
+      this.snapshotNotice?.revision === current?.revision
+    this.snapshotNotice = pending || sameNotice
+      ? { id: current.id, revision: current.revision }
+      : null
+    const snapshotRevisionUpdate = Boolean(this.snapshotNotice)
+    if (this.state.snapshotRevisionUpdate !== snapshotRevisionUpdate) {
+      this.setState({ snapshotRevisionUpdate })
+    }
+    if (pending && this.acknowledgedSnapshot !== `${current.id}:${current.revision}`) {
+      this.acknowledgedSnapshot = `${current.id}:${current.revision}`
+      chrome.storage.local.set({
+        snapshotRevisionsSeen: { ...config.snapshotRevisionsSeen, [current.id]: current.revision }
+      }).catch(error => console.error(error))
+    }
   }
 
   async componentDidMount () {
@@ -803,27 +839,8 @@ class App extends Component {
     chrome.management.onUninstalled.addListener(this.onManagementChange)
 
     const config = await getConfig()
-    const current = config.versions?.[config.arch]?.find(
-      build => build.tag === config.tag
-    )
-    const snapshotRevisionUpdate = hasSnapshotRevisionUpdate({
-      current,
-      notifySnapshotRevisions: config.notifySnapshotRevisions,
-      snapshotRevisionsSeen: config.snapshotRevisionsSeen
-    })
     if (this.mounted) {
-      this.setState({
-        ...config,
-        snapshotRevisionUpdate
-      })
-    }
-    if (snapshotRevisionUpdate) {
-      await chrome.storage.local.set({
-        snapshotRevisionsSeen: {
-          ...config.snapshotRevisionsSeen,
-          [current.id]: current.revision
-        }
-      })
+      this.setState(config, () => this.refreshSnapshotNotice(this.state))
     }
   }
 
@@ -861,6 +878,7 @@ class App extends Component {
       snapshotRevisionUpdate,
       tag,
       themeMode,
+      accentPalette,
       useCustomColors,
       versions,
       woolyssDataStale,
@@ -914,6 +932,7 @@ class App extends Component {
 
       <${Section}>
         <${Settings}
+          accentPalette="${accentPalette}"
           arch="${arch}"
           badgeColors="${badgeColors}"
           current="${current}"
