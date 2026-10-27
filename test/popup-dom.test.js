@@ -98,7 +98,7 @@ test('popup renders the tracked build and handles refresh and theme changes', as
     window: { configurable: true, value: window }
   })
   t.after(async () => {
-    const { render } = await import('../js/vendor/preact-11.0.1.mjs')
+    const { render } = await import('../js/vendor/preact-11.0.2.mjs')
     render(null, document.getElementById('app'))
     for (const [name, descriptor] of Object.entries(previous)) {
       if (descriptor) Object.defineProperty(globalThis, name, descriptor)

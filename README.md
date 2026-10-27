@@ -13,7 +13,8 @@ management where Chromium permits it.
 ## Current development status
 
 - The next release is blocked on a repeat full audit, an elevated security audit
-  and verified production feed deployment. See [release gates](RELEASE_CHECKLIST.md).
+  and verified production feed deployment on Node.js 26 LTS.
+  See [release gates](RELEASE_CHECKLIST.md).
 - The current stable release is Manifest V3 version 4.1.0.
 - Version 4.0.0 is retired: it cannot verify the currently signed production
   feed. Update to 4.1.0; unpacked installations must be reloaded from current

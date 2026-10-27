@@ -26,14 +26,14 @@ test('popup pins the verified stable Preact 11 release', async () => {
     'utf8'
   )
   const vendor = await readFile(
-    new URL('../js/vendor/preact-11.0.1.mjs', import.meta.url)
+    new URL('../js/vendor/preact-11.0.2.mjs', import.meta.url)
   )
 
-  assert.match(source, /vendor\/preact-11\.0\.1\.mjs/)
-  assert.match(notices, /Preact 11\.0\.1/)
+  assert.match(source, /vendor\/preact-11\.0\.2\.mjs/)
+  assert.match(notices, /Preact 11\.0\.2/)
   assert.equal(
     createHash('sha256').update(vendor).digest('hex'),
-    '3a3201e9ccef7d30ef1273427f1b17ef8323e464b2c8d73b4fd5636af730433e'
+    '4d2617f3f082550223d37f781114b5f723362fc4a337459715a7083664dc10c1'
   )
 })
 

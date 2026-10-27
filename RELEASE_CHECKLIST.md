@@ -4,7 +4,7 @@ These gates are mandatory for the next release after 4.1.0. They are additional
 to existing signing-key, snapshot-history and packaging checks. A green CI run
 does not by itself close an audit or production-deployment gate.
 
-## Open blockers (2026-10-22)
+## Open blockers (updated 2026-10-27)
 
 - [ ] **Repeat the full audit after the structural refactor.** Review both
   projects at recorded candidate commit hashes, including shared presentation,
@@ -31,6 +31,16 @@ does not by itself close an audit or production-deployment gate.
   timers and a successful scheduled publication/health cycle. Verify the
   released client and new notifier candidate against the published feed and
   record the deployed commit and evidence before closing this gate.
+  - [ ] **Production must run Node.js 26 LTS.** Upgrade to an officially
+    published 26.x LTS patch available through the production package source,
+    not a prerelease or a Current-only build. The official schedule sets the
+    LTS transition to 2026-10-28; verify actual release status when deploying:
+    [Node.js release schedule](https://github.com/nodejs/Release/blob/main/schedule.json).
+    Record the exact installed patch, systemd publisher/health runtime paths and
+    versions (not just the interactive shell's `node --version`). Repeat feed
+    tests, signing/verification, manual publication and a scheduled publisher
+    and health cycle on that runtime. The code's existing minimum Node version
+    is not automatically raised by this production deployment requirement.
 
 ## Closure rules
 

@@ -1,12 +1,12 @@
 Third-party software notices
 ============================
 
-Preact 11.0.1
+Preact 11.0.2
 Source: https://github.com/preactjs/preact
-Package: https://registry.npmjs.org/preact/-/preact-11.0.1.tgz
-Package integrity: sha512-TNNwEq++jYNHy747LziCjPRVgEwnLSOIOAw/oYcjI3Tdnubx2EXtt76I0an8PATvUWtx/DX1kFIg1eFN+O/fkw==
-Bundled file: js/vendor/preact-11.0.1.mjs
-Bundled file SHA-256: 3a3201e9ccef7d30ef1273427f1b17ef8323e464b2c8d73b4fd5636af730433e
+Package: https://registry.npmjs.org/preact/-/preact-11.0.2.tgz
+Package integrity: sha512-ofG+Lqznbt13JKDjdWPLTo5ONBqcNgidqnLRzJBG6PZjzGXOLRd5y9r448+HUofTyDbgKWVrPhHP0IgcxEZslQ==
+Bundled file: js/vendor/preact-11.0.2.mjs
+Bundled file SHA-256: 4d2617f3f082550223d37f781114b5f723362fc4a337459715a7083664dc10c1
 
 The MIT License (MIT)
 

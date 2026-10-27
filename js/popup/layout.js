@@ -1,4 +1,4 @@
-import { Component } from '../vendor/preact-11.0.1.mjs'
+import { Component } from '../vendor/preact-11.0.2.mjs'
 import { html } from './html.js'
 
 const CHROMATIC_FEED_PROJECT_URL = 'https://github.com/Bone06/chromatic-feed'

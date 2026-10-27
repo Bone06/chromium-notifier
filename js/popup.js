@@ -1,4 +1,4 @@
-import { Component, render } from './vendor/preact-11.0.1.mjs'
+import { Component, render } from './vendor/preact-11.0.2.mjs'
 import { getConfig, getInstalledExtensions } from './utils.js'
 import { getUpdatePresentation } from './presentation.js'
 import { html } from './popup/html.js'
